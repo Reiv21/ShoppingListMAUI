@@ -9,6 +9,7 @@ using System.Collections.Specialized;
 using System.Collections.Generic;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
+using CommunityToolkit.Maui.Storage;
 
 namespace ShoppingList.ViewModels
 {
@@ -115,11 +116,24 @@ namespace ShoppingList.ViewModels
                 try
                 {
                     var data = BuildAppDataFromVm();
-                    var fileName = $"lista_zakupow_{DateTime.Now:yyyyMMdd_HHmmss}.json";
-                    var path = System.IO.Path.Combine(FileSystem.AppDataDirectory, fileName);
+                    var json = System.Text.Json.JsonSerializer.Serialize(data, new System.Text.Json.JsonSerializerOptions
+                    {
+                        WriteIndented = true
+                    });
 
-                    await _dataService.ExportAsync(path, data);
-                    await Application.Current.MainPage.DisplayAlert("Eksport", $"Zapisano plik: {path}", "OK");
+                    var fileName = $"lista_zakupow_{DateTime.Now:yyyyMMdd_HHmmss}.json";
+                    using var stream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
+
+                    var result = await FileSaver.Default.SaveAsync(fileName, stream, default);
+
+                    if (result.IsSuccessful)
+                    {
+                        await Application.Current.MainPage.DisplayAlert("Eksport", $"Zapisano plik: {result.FilePath}", "OK");
+                    }
+                    else if (result.Exception is not null)
+                    {
+                        await Application.Current.MainPage.DisplayAlert("Eksport", $"Błąd zapisu: {result.Exception.Message}", "OK");
+                    }
                 }
                 catch (Exception ex)
                 {
