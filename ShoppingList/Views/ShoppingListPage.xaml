@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:controls="clr-namespace:ShoppingList.Views.Controls"
+    x:Class="ShoppingList.Views.ShoppingListPage"
+    Title="Lista zakupów">
+
+  <ContentPage.ToolbarItems>
+    <ToolbarItem Text="Eksport" Command="{Binding ExportCommand}" />
+    <ToolbarItem Text="Import" Command="{Binding ImportCommand}" />
+  </ContentPage.ToolbarItems>
+
+  <Grid Padding="10" RowDefinitions="Auto,*" ColumnDefinitions="*">
+    <!-- Row 0: kontrole dodawania kategorii i przyciski akcji -->
+    <StackLayout Orientation="Vertical" Spacing="8" Grid.Row="0">
+      <StackLayout Orientation="Horizontal" Spacing="8">
+        <Entry x:Name="CategoryEntry" Placeholder="Nowa kategoria" HorizontalOptions="FillAndExpand"/>
+        <Button Text="Dodaj kategorię"
+                Command="{Binding AddCategoryCommand}"
+                CommandParameter="{Binding Source={x:Reference CategoryEntry}, Path=Text}" />
+      </StackLayout>
+
+      <StackLayout Orientation="Horizontal" Spacing="8">
+        <Button Text="Zapisz" Command="{Binding SaveCommand}" />
+        <Button Text="Sortuj - nazwa" Command="{Binding SortByNameCommand}" />
+        <Button Text="Sortuj - ilość" Command="{Binding SortByQuantityCommand}" />
+      </StackLayout>
+    </StackLayout>
+
+    <!-- Row 1: lista kategorii z produktami -->
+    <CollectionView Grid.Row="1"
+                    ItemsSource="{Binding Categories}"
+                    SelectionMode="None"
+                    VerticalOptions="FillAndExpand"
+                    ItemsLayout="VerticalList">
+      <CollectionView.ItemTemplate>
+        <DataTemplate>
+          <Frame Padding="8" Margin="6" HasShadow="True">
+            <StackLayout>
+              <Grid ColumnDefinitions="*,Auto,Auto">
+                <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="16" Grid.Column="0" VerticalOptions="Center"/>
+                <Button Grid.Column="1" Command="{Binding ToggleExpandCommand}" Text="Rozwiń" VerticalOptions="Center">
+                  <Button.Triggers>
+                    <DataTrigger TargetType="Button" Binding="{Binding IsExpanded}" Value="True">
+                      <Setter Property="Text" Value="Zwiń" />
+                    </DataTrigger>
+                  </Button.Triggers>
+                </Button>
+                <Button Grid.Column="2"
+                        Text="Usuń"
+                        TextColor="Red"
+                        Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.DeleteCategoryCommand}"
+                        CommandParameter="{Binding .}" />
+              </Grid>
+
+              <!-- Sekcja z polami dodawania produktu i listą produktów - widoczna tylko gdy IsExpanded == true -->
+              <StackLayout IsVisible="{Binding IsExpanded}">
+                <StackLayout Orientation="Horizontal" Spacing="6" Margin="0,6,0,6">
+                  <Entry Placeholder="Nazwa produktu" Text="{Binding NewProductName}" HorizontalOptions="FillAndExpand"/>
+                  <Entry Placeholder="Jednostka" WidthRequest="80" Text="{Binding NewProductUnit}" />
+                  <Entry Placeholder="Ilość" WidthRequest="70" Keyboard="Numeric" Text="{Binding NewProductQuantity}" />
+                  <Button Text="+ Dodaj" Command="{Binding AddProductCommand}" />
+                </StackLayout>
+
+                <CollectionView ItemsSource="{Binding Products}"
+                                SelectionMode="None"
+                                ItemsLayout="VerticalList"
+                                VerticalOptions="FillAndExpand"
+                                HeightRequest="180">
+                  <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                      <controls:ProductView />
+                    </DataTemplate>
+                  </CollectionView.ItemTemplate>
+                </CollectionView>
+              </StackLayout>
+            </StackLayout>
+          </Frame>
+        </DataTemplate>
+      </CollectionView.ItemTemplate>
+    </CollectionView>
+  </Grid>
+</ContentPage>

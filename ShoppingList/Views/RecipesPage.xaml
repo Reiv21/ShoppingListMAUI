@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="ShoppingList.Views.RecipesPage"
+    Title="Przepisy">
+
+  <Grid Padding="10" RowDefinitions="Auto,*">
+    <Label Text="Przepisy" FontAttributes="Bold" FontSize="20" Grid.Row="0" />
+
+    <CollectionView Grid.Row="1"
+                    ItemsSource="{Binding Recipes}"
+                    SelectionMode="None"
+                    ItemsLayout="VerticalList">
+      <CollectionView.ItemTemplate>
+        <DataTemplate>
+          <Frame Padding="8" Margin="4">
+            <StackLayout Spacing="8">
+              <StackLayout Spacing="4">
+                <Label Text="{Binding Title}" FontAttributes="Bold" />
+                <Label Text="{Binding Description}" FontSize="12" TextColor="DimGray" />
+                <StackLayout Orientation="Horizontal" Spacing="8">
+                  <Button Text="Dodaj składniki do listy"
+                          Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ImportRecipeCommand}"
+                          CommandParameter="{Binding .}" />
+                  <Button Text="Pokaż / ukryj składniki"
+                          Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ToggleRecipeExpandCommand}"
+                          CommandParameter="{Binding .}" />
+                  <Button Text="Usuń"
+                          TextColor="Red"
+                          Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.DeleteRecipeCommand}"
+                          CommandParameter="{Binding .}" />
+                </StackLayout>
+              </StackLayout>
+
+              <StackLayout Spacing="8" IsVisible="{Binding IsExpanded}">
+                <StackLayout Spacing="4">
+                  <Label Text="Składniki" FontAttributes="Bold" />
+                  <CollectionView ItemsSource="{Binding Ingredients}" SelectionMode="None">
+                    <CollectionView.ItemTemplate>
+                      <DataTemplate>
+                        <StackLayout Orientation="Horizontal" Spacing="8">
+                          <Label Text="{Binding Name}" />
+                          <Label Text="{Binding Quantity}" />
+                          <Label Text="{Binding Unit}" />
+                          <Label Text="{Binding Store}" />
+                          <Label Text="(opcjonalny)" IsVisible="{Binding IsOptional}" FontSize="10" TextColor="DimGray" />
+                        </StackLayout>
+                      </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                  </CollectionView>
+                </StackLayout>
+
+                <StackLayout Spacing="4">
+                  <Label Text="Dodaj składnik" FontAttributes="Bold" />
+                  <Entry Placeholder="Nazwa składnika" Text="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.NewIngredientName}" />
+                  <Entry Placeholder="Ilość" Keyboard="Numeric" Text="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.NewIngredientQuantity}" />
+                  <Entry Placeholder="Jednostka" Text="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.NewIngredientUnit}" />
+                  <Entry Placeholder="Sklep" Text="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.NewIngredientStore}" />
+                  <StackLayout Orientation="Horizontal" Spacing="8">
+                    <Label Text="Opcjonalny" VerticalOptions="Center" />
+                    <Switch IsToggled="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.NewIngredientIsOptional}" />
+                  </StackLayout>
+                  <Button Text="Dodaj składnik"
+                          Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.AddIngredientToRecipeCommand}"
+                          CommandParameter="{Binding .}" />
+                </StackLayout>
+              </StackLayout>
+
+            </StackLayout>
+          </Frame>
+        </DataTemplate>
+      </CollectionView.ItemTemplate>
+    </CollectionView>
+
+  </Grid>
+</ContentPage>

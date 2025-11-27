@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="ShoppingList.Views.Controls.ProductView">
+  <ContentView.Content>
+    <Grid Padding="8" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+      <!-- checkbox + name -->
+      <StackLayout Orientation="Horizontal" Grid.Column="0" Grid.Row="0" VerticalOptions="Center">
+        <CheckBox x:Name="BoughtCheck" IsChecked="{Binding IsBought}" VerticalOptions="Center" />
+      </StackLayout>
+
+      <StackLayout Grid.Column="1" Grid.Row="0">
+        <Label Text="{Binding Name}" FontAttributes="Bold">
+          <Label.Triggers>
+            <DataTrigger TargetType="Label" Binding="{Binding IsBought}" Value="True">
+              <Setter Property="TextColor" Value="Gray" />
+            </DataTrigger>
+          </Label.Triggers>
+        </Label>
+        <Label Text="{Binding Unit}" FontSize="12" TextColor="DimGray"/>
+      </StackLayout>
+
+      <StackLayout Orientation="Horizontal" Grid.Column="2" Grid.Row="0" Spacing="6" VerticalOptions="Center">
+        <Button Text="-" Command="{Binding DecrementCommand}" WidthRequest="32" />
+        <Entry Text="{Binding Quantity}" WidthRequest="60" Keyboard="Numeric" HorizontalTextAlignment="Center"/>
+        <Button Text="+" Command="{Binding IncrementCommand}" WidthRequest="32" />
+        <Button Text="Usuń" Command="{Binding DeleteCommand}" />
+      </StackLayout>
+
+      <!-- dodatkowe: opcjonalny i sklep -->
+      <StackLayout Orientation="Horizontal" Grid.ColumnSpan="3" Grid.Row="1" Spacing="10">
+        <Label Text="Opcjonalny:" VerticalOptions="Center"/>
+        <Switch IsToggled="{Binding IsOptional}" />
+        <Label Text="Sklep:" VerticalOptions="Center"/>
+        <Entry Text="{Binding Store}" Placeholder="np. Biedronka" WidthRequest="120"/>
+      </StackLayout>
+    </Grid>
+  </ContentView.Content>
+</ContentView>
