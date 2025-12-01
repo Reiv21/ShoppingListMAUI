@@ -4,7 +4,7 @@ using System.Linq;
 using System.Windows.Input;
 using ShoppingList.Models;
 using Microsoft.Maui.ApplicationModel;
-using Microsoft.Maui.Controls; // dodane
+using Microsoft.Maui.Controls;
 
 namespace ShoppingList.ViewModels
 {
@@ -15,6 +15,10 @@ namespace ShoppingList.ViewModels
         public Guid Id => _model.Id;
         public string Name { get => _model.Name; set { _model.Name = value; OnPropertyChanged(); } }
         public ObservableCollection<ProductViewModel> Products { get; } = new ObservableCollection<ProductViewModel>();
+        public ObservableCollection<ProductViewModel> FilteredProducts { get; } = new ObservableCollection<ProductViewModel>();
+        private bool _hasFilterMatch = true;
+        public bool HasFilterMatch { get => _hasFilterMatch; set => SetProperty(ref _hasFilterMatch, value); }
+        private string _lastFilter = string.Empty;
         private bool _isExpanded = true;
         public bool IsExpanded { get => _isExpanded; set => SetProperty(ref _isExpanded, value); }
 
@@ -36,6 +40,8 @@ namespace ShoppingList.ViewModels
         {
             _model = c;
 
+            Products.CollectionChanged += (s, e) => ReapplyFilter();
+
             AddProductCommand = new Command(() =>
             {
                 var name = string.IsNullOrWhiteSpace(NewProductName) ? "Nowy produkt" : NewProductName.Trim();
@@ -53,11 +59,49 @@ namespace ShoppingList.ViewModels
                 NewProductQuantity = 1;
             });
 
-            // inicjalizacja komendy ToggleExpandCommand
             ToggleExpandCommand = new Command(() =>
             {
                 IsExpanded = !IsExpanded;
             });
+
+            ResetFilter();
+        }
+
+        public void ApplyFilter(string? filterText)
+        {
+            var term = filterText ?? _lastFilter;
+            if (string.IsNullOrWhiteSpace(term))
+            {
+                _lastFilter = string.Empty;
+                ResetFilter();
+                return;
+            }
+
+            _lastFilter = term;
+            term = term.Trim().ToLowerInvariant();
+            var matches = Products
+                .Where(p => !string.IsNullOrWhiteSpace(p.Store) && p.Store.ToLowerInvariant().Contains(term))
+                .ToList();
+
+            UpdateFilteredProducts(matches);
+        }
+
+        public void ResetFilter()
+        {
+            _lastFilter = string.Empty;
+            UpdateFilteredProducts(Products.ToList(), true);
+        }
+
+        private void ReapplyFilter()
+        {
+            ApplyFilter(null);
+        }
+
+        private void UpdateFilteredProducts(System.Collections.Generic.IList<ProductViewModel> items, bool forceVisible = false)
+        {
+            FilteredProducts.Clear();
+            foreach (var item in items) FilteredProducts.Add(item);
+            HasFilterMatch = forceVisible || items.Count > 0;
         }
 
         public void MoveBoughtToEnd(ProductViewModel vm)

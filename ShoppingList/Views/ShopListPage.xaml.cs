@@ -20,5 +20,14 @@ namespace ShoppingList.Views
                 vm.RefreshShopViewCommand.Execute(null);
             }
         }
+
+        protected override void OnDisappearing()
+        {
+            base.OnDisappearing();
+            if (BindingContext is MainViewModel vm)
+            {
+                vm.IsShopView = false;
+            }
+        }
     }
 }

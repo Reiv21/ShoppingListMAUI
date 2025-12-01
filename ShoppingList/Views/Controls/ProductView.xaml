@@ -17,12 +17,12 @@
             </DataTrigger>
           </Label.Triggers>
         </Label>
-        <Label Text="{Binding Unit}" FontSize="12" TextColor="DimGray"/>
       </StackLayout>
 
       <StackLayout Orientation="Horizontal" Grid.Column="2" Grid.Row="0" Spacing="6" VerticalOptions="Center">
         <Button Text="-" Command="{Binding DecrementCommand}" WidthRequest="32" />
-        <Entry Text="{Binding Quantity}" WidthRequest="60" Keyboard="Numeric" HorizontalTextAlignment="Center"/>
+        <Entry Text="{Binding Quantity}" WidthRequest="60" Keyboard="Numeric" HorizontalTextAlignment="Center" />
+        <Label Text="{Binding Unit}" FontSize="12" TextColor="DimGray" VerticalOptions="Center" Margin="4,0" />
         <Button Text="+" Command="{Binding IncrementCommand}" WidthRequest="32" />
         <Button Text="Usuń" Command="{Binding DeleteCommand}" />
       </StackLayout>

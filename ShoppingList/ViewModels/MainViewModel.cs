@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
 using CommunityToolkit.Maui.Storage;
+using Microsoft.Maui.Devices;
 
 namespace ShoppingList.ViewModels
 {
@@ -19,6 +20,30 @@ namespace ShoppingList.ViewModels
         private AppData? _data;
 
         public ObservableCollection<CategoryViewModel> Categories { get; } = new();
+        private string _shopFilterText = string.Empty;
+        public string ShopFilterText
+        {
+            get => _shopFilterText;
+            set
+            {
+                if (SetProperty(ref _shopFilterText, value)) ApplyShopFilter();
+            }
+        }
+
+        public class ProductGroup : ObservableCollection<ProductViewModel>
+        {
+            public string CategoryName { get; }
+            public int Order { get; }
+
+            public ProductGroup(string name, int order, IEnumerable<ProductViewModel> items) : base(items)
+            {
+                CategoryName = name;
+                Order = order;
+            }
+        }
+
+        public ObservableCollection<ProductGroup> ShopViewGroups { get; } = new();
+        // Płaska lista produktów dla widoku "Lista do sklepu" — bez nagłówków kategorii, posortowana po kategoriach
         public ObservableCollection<ProductViewModel> ShopViewProducts { get; } = new();
         public ObservableCollection<Recipe> Recipes { get; } = new();
 
@@ -88,6 +113,7 @@ namespace ShoppingList.ViewModels
         public ICommand ToggleRecipeExpandCommand { get; }
         public ICommand DeleteCategoryCommand { get; }
         public ICommand DeleteRecipeCommand { get; }
+        public ICommand ClearShopFilterCommand { get; }
 
         public MainViewModel()
         {
@@ -108,6 +134,8 @@ namespace ShoppingList.ViewModels
                 IsShopView = !IsShopView;
                 RefreshShopView();
             });
+
+            ClearShopFilterCommand = new Command(() => ShopFilterText = string.Empty);
 
             RefreshShopViewCommand = new Command(RefreshShopView);
 
@@ -283,6 +311,7 @@ namespace ShoppingList.ViewModels
             _data = await _dataService.LoadAsync();
             await LoadFromDataAsync(_data);
             foreach (var c in Categories) AttachCategoryHandlers(c);
+            ApplyShopFilter();
         }
 
         private async Task LoadFromDataAsync(AppData data)
@@ -310,6 +339,7 @@ namespace ShoppingList.ViewModels
             }
 
             RefreshShopView();
+            ApplyShopFilter();
         }
 
         private AppData BuildAppDataFromVm()
@@ -364,6 +394,7 @@ namespace ShoppingList.ViewModels
                     foreach (ProductViewModel p in e.OldItems) DetachProductHandler(p);
 
                 RefreshShopView();
+                ApplyShopFilter();
             };
 
             foreach (var p in cvm.Products) AttachProductHandler(p);
@@ -397,22 +428,26 @@ namespace ShoppingList.ViewModels
 
         private void RefreshShopView()
         {
+            ShopViewGroups.Clear();
             ShopViewProducts.Clear();
             if (!IsShopView) return;
 
-            var tmp = new List<(ProductViewModel product, int catOrder, string catName)>();
-            foreach (var c in Categories)
+            // Dla każdej kategorii w kolejności Order zbieramy produkty niekupione
+            var orderedCategories = Categories.OrderBy(c => c.Model?.Order ?? 0).ThenBy(c => c.Name).ToList();
+            foreach (var cat in orderedCategories)
             {
-                var order = c.Model?.Order ?? 0;
-                var name = c.Name ?? "";
-                foreach (var p in c.Products.Where(p => !p.IsBought))
+                var products = cat.Products.Where(p => !p.IsBought).OrderBy(p => p.Name).ToList();
+                if (!products.Any()) continue;
+                // zachowujemy grupę (opcjonalnie używana gdzie indziej)
+                var group = new ProductGroup(cat.Name, cat.Model?.Order ?? 0, products);
+                ShopViewGroups.Add(group);
+
+                // dodajemy płaskie elementy do listy widoku sklepu (kolejność: po kategoriach, potem po nazwie)
+                foreach (var p in products)
                 {
-                    tmp.Add((p, order, name));
+                    ShopViewProducts.Add(p);
                 }
             }
-
-            var ordered = tmp.OrderBy(x => x.catOrder).ThenBy(x => x.catName).ThenBy(x => x.product.Name).Select(x => x.product).ToList();
-            foreach (var p in ordered) ShopViewProducts.Add(p);
         }
 
         private CategoryViewModel? GetOrCreateCategoryForRecipe(string title)
@@ -493,6 +528,21 @@ namespace ShoppingList.ViewModels
                 pvm.OnDelete += (s, e) => cat.Products.Remove(pvm);
                 pvm.OnBoughtChanged += (s, e) => cat.MoveBoughtToEnd(pvm);
                 cat.Products.Add(pvm);
+            }
+        }
+
+        private void ApplyShopFilter()
+        {
+            var filter = ShopFilterText?.Trim();
+            foreach (var category in Categories)
+            {
+                if (string.IsNullOrWhiteSpace(filter))
+                {
+                    category.ResetFilter();
+                    continue;
+                }
+
+                category.ApplyFilter(filter);
             }
         }
     }
