@@ -14,7 +14,23 @@ namespace ShoppingList.ViewModels
         public string Name { get => _model.Name; set { _model.Name = value; OnPropertyChanged(); } }
         public string Unit { get => _model.Unit; set { _model.Unit = value; OnPropertyChanged(); } }
         public double Quantity { get => _model.Quantity; set { _model.Quantity = value; OnPropertyChanged(); } }
-        public bool IsBought { get => _model.IsBought; set { _model.IsBought = value; OnPropertyChanged(); OnBoughtChanged?.Invoke(this, EventArgs.Empty); } }
+
+        public bool IsBought
+        {
+            get => _model.IsBought;
+            set
+            {
+                if (_model.IsBought == value)
+                {
+                    return;
+                }
+
+                _model.IsBought = value;
+                OnPropertyChanged();
+                OnBoughtChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
         public bool IsOptional { get => _model.IsOptional; set { _model.IsOptional = value; OnPropertyChanged(); } }
         public string Store { get => _model.Store; set { _model.Store = value; OnPropertyChanged(); } }
         public Guid CategoryId { get => _model.CategoryId; set { _model.CategoryId = value; OnPropertyChanged(); } }
@@ -30,7 +46,7 @@ namespace ShoppingList.ViewModels
         {
             _model = p;
             IncrementCommand = new Command(() => Quantity = Math.Round(Quantity + 1, 2));
-            DecrementCommand = new Command(() => { if (Quantity > 0) Quantity = Math.Round(Math.Max(0, Quantity - 1),2); });
+            DecrementCommand = new Command(() => { if (Quantity > 0) Quantity = Math.Round(Math.Max(0, Quantity - 1), 2); });
             DeleteCommand = new Command(() => OnDelete?.Invoke(this, EventArgs.Empty));
         }
     }

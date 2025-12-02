@@ -6,6 +6,7 @@ using ShoppingList.Models;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using System.Threading.Tasks;
+using System.Collections.Specialized;
 
 namespace ShoppingList.ViewModels
 {
@@ -38,12 +39,15 @@ namespace ShoppingList.ViewModels
         // komenda do zwijania/rozwijania kategorii
         public ICommand ToggleExpandCommand { get; }
 
+        // flaga do unikania rekurencyjnego filtrowania podczas masowych zmian
+        private bool _isUpdatingProducts;
+
         public CategoryViewModel(Category c, Func<Task>? saveCallback = null)
         {
             _model = c;
             _saveCallback = saveCallback;
 
-            Products.CollectionChanged += (s, e) => ReapplyFilter();
+            Products.CollectionChanged += Products_CollectionChanged;
 
             AddProductCommand = new Command(() =>
             {
@@ -75,6 +79,16 @@ namespace ShoppingList.ViewModels
             ResetFilter();
         }
 
+        private void Products_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (_isUpdatingProducts)
+            {
+                return;
+            }
+
+            ReapplyFilter();
+        }
+
         private void RequestSave()
         {
             if (_saveCallback != null)
@@ -95,10 +109,14 @@ namespace ShoppingList.ViewModels
 
             _lastFilter = term;
             term = term.Trim().ToLowerInvariant();
-            System.Collections.Generic.List<ProductViewModel> matches = Products
-                .Where(p => !string.IsNullOrWhiteSpace(p.Store) &&
-                            p.Store.ToLowerInvariant().Contains(term))
-                .ToList();
+            System.Collections.Generic.List<ProductViewModel> matches;
+            lock (Products)
+            {
+                matches = Products
+                    .Where(p => !string.IsNullOrWhiteSpace(p.Store) &&
+                                p.Store.ToLowerInvariant().Contains(term))
+                    .ToList();
+            }
 
             UpdateFilteredProducts(matches);
         }
@@ -106,7 +124,12 @@ namespace ShoppingList.ViewModels
         public void ResetFilter()
         {
             _lastFilter = string.Empty;
-            UpdateFilteredProducts(Products.ToList(), true);
+            System.Collections.Generic.List<ProductViewModel> snapshot;
+            lock (Products)
+            {
+                snapshot = Products.ToList();
+            }
+            UpdateFilteredProducts(snapshot, true);
         }
 
         private void ReapplyFilter()
@@ -123,19 +146,26 @@ namespace ShoppingList.ViewModels
 
         public void MoveBoughtToEnd(ProductViewModel vm)
         {
-            // przenosi kupione pozycje na koniec kolekcji lub niekupione przed kupionymi
-            // bez tworzenia nowej kolekci/zmiany referencji
-            // modyfikacja kolejnosci odbywa sie tutaj gdy zmienia się stan IsBought konkretnego produktu
-
-            // BeginInvokeOnMainThread odracza wykonanie poza biezace zdarzenie CollectionChanged,
-            // co zapobiega wyjątkom typu "collection was modified" i problema z ods UI.
             MainThread.BeginInvokeOnMainThread(() =>
             {
+                if (!Products.Contains(vm))
+                {
+                    return;
+                }
+
+                _isUpdatingProducts = true;
                 try
                 {
-                    if (vm.IsBought)
+                    bool isBought = vm.IsBought;
+
+                    // snapshot, żeby nie enumerować żywej kolekcji podczas modyfikacji
+                    System.Collections.Generic.List<ProductViewModel> currentProducts = Products.ToList();
+
+                    if (isBought)
                     {
-                        if (Products.Contains(vm))
+                        // przenieś na koniec, ale tylko jeśli nie jest już na końcu
+                        int currentIndex = currentProducts.IndexOf(vm);
+                        if (currentIndex >= 0 && currentIndex != currentProducts.Count - 1)
                         {
                             Products.Remove(vm);
                             Products.Add(vm);
@@ -143,39 +173,59 @@ namespace ShoppingList.ViewModels
                     }
                     else
                     {
-                        // liczymy kupione przed aktualizacja
-                        System.Collections.Generic.List<ProductViewModel> bought = Products.Where(p => p.IsBought).ToList();
+                        int boughtCount = currentProducts.Count(p => p.IsBought && !object.ReferenceEquals(p, vm));
 
-                        if (Products.Contains(vm))
+                        Products.Remove(vm);
+                        int index = Products.Count - boughtCount;
+                        if (index < 0)
                         {
-                            Products.Remove(vm);
-                            int index = Products.Count - bought.Count;
-                            if (index < 0) index = 0;
-                            if (index > Products.Count) index = Products.Count;
-                            Products.Insert(index, vm);
+                            index = 0;
                         }
+                        if (index > Products.Count)
+                        {
+                            index = Products.Count;
+                        }
+                        Products.Insert(index, vm);
                     }
                 }
-                catch
+                finally
                 {
-                    // nie powinno wywalic, jednak nie ufam MAUI wiec jest ten catch i wszystko powinno smigac
-                    // z pustym catchiem, dzieki temu sie UI nie zablokuje w razie czego
+                    _isUpdatingProducts = false;
+                    ReapplyFilter();
                 }
             });
         }
 
         public void SortProductsByName()
         {
-            System.Collections.Generic.List<ProductViewModel> ordered = Products.OrderBy(p => p.IsBought).ThenBy(p => p.Name).ToList();
-            Products.Clear();
-            foreach (ProductViewModel p in ordered) Products.Add(p);
+            _isUpdatingProducts = true;
+            try
+            {
+                System.Collections.Generic.List<ProductViewModel> ordered = Products.OrderBy(p => p.IsBought).ThenBy(p => p.Name).ToList();
+                Products.Clear();
+                foreach (ProductViewModel p in ordered) Products.Add(p);
+            }
+            finally
+            {
+                _isUpdatingProducts = false;
+                ReapplyFilter();
+            }
         }
 
         public void SortProductsByQuantity()
         {
-            System.Collections.Generic.List<ProductViewModel> ordered = Products.OrderBy(p => p.IsBought).ThenBy(p => p.Quantity).ToList();
-            Products.Clear();
-            foreach (ProductViewModel p in ordered) Products.Add(p);
+            _isUpdatingProducts = true;
+            try
+            {
+                System.Collections.Generic.List<ProductViewModel> ordered = Products.OrderBy(p => p.IsBought).ThenBy(p => p.Quantity).ToList();
+                Products.Clear();
+                foreach (ProductViewModel p in ordered) Products.Add(p);
+            }
+            finally
+            {
+                _isUpdatingProducts = false;
+                ReapplyFilter();
+            }
         }
     }
 }
