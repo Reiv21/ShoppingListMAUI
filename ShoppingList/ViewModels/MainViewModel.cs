@@ -42,7 +42,21 @@ namespace ShoppingList.ViewModels
             get => _shopFilterText;
             set
             {
-                if (SetProperty(ref _shopFilterText, value)) ApplyShopFilter();
+                if (SetProperty(ref _shopFilterText, value))
+                {
+                    string? filter = value?.Trim();
+                    if (string.IsNullOrWhiteSpace(filter))
+                    {
+                        foreach (CategoryViewModel category in Categories)
+                        {
+                            category.ResetFilter();
+                        }
+                    }
+                    else
+                    {
+                        ApplyShopFilter();
+                    }
+                }
             }
         }
 
