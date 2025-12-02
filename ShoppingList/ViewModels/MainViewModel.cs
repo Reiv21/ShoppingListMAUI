@@ -43,9 +43,43 @@ namespace ShoppingList.ViewModels
         }
 
         public ObservableCollection<ProductGroup> ShopViewGroups { get; } = new();
-        // Płaska lista produktów dla widoku "Lista do sklepu" — bez nagłówków kategorii, posortowana po kategoriach
         public ObservableCollection<ProductViewModel> ShopViewProducts { get; } = new();
         public ObservableCollection<Recipe> Recipes { get; } = new();
+
+        public enum ShopSortOption
+        {
+            Category,
+            Name,
+            Quantity
+        }
+
+
+        public sealed class ShopSortOptionEntry
+        {
+            public ShopSortOption Option { get; }
+            public string Label { get; }
+
+            public ShopSortOptionEntry(ShopSortOption option, string label)
+            {
+                Option = option;
+                Label = label;
+            }
+        }
+
+        public IReadOnlyList<ShopSortOptionEntry> ShopSortOptions { get; }
+
+        private ShopSortOptionEntry _selectedShopSortOption;
+        public ShopSortOptionEntry SelectedShopSortOption
+        {
+            get => _selectedShopSortOption;
+            set
+            {
+                if (SetProperty(ref _selectedShopSortOption, value))
+                {
+                    RefreshShopView();
+                }
+            }
+        }
 
         private Recipe? _selectedRecipe;
         public Recipe? SelectedRecipe
@@ -119,6 +153,14 @@ namespace ShoppingList.ViewModels
         {
             Categories.CollectionChanged += Categories_CollectionChanged;
 
+            ShopSortOptions = new[]
+            {
+                new ShopSortOptionEntry(ShopSortOption.Category, "Kategoria"),
+                new ShopSortOptionEntry(ShopSortOption.Name, "Nazwa"),
+                new ShopSortOptionEntry(ShopSortOption.Quantity, "Ilość")
+            };
+            _selectedShopSortOption = ShopSortOptions[0];
+
             AddCategoryCommand = new Command<string>(name =>
             {
                 var category = new Category { Name = string.IsNullOrWhiteSpace(name) ? "Nowa kategoria" : name, Order = Categories.Count };
@@ -189,18 +231,32 @@ namespace ShoppingList.ViewModels
 
                     if (pickResult == null) return;
 
+                    var mode = await PromptImportModeAsync();
+                    if (mode == null) return;
+
                     using var stream = await pickResult.OpenReadAsync();
                     using var reader = new System.IO.StreamReader(stream);
                     var json = await reader.ReadToEndAsync();
 
                     var imported = System.Text.Json.JsonSerializer.Deserialize<AppData>(json) ?? new AppData();
-                    await LoadFromDataAsync(imported);
+                    var current = BuildAppDataFromVm();
+                    var merged = _dataService.Merge(current, imported, mode.Value);
 
-                    await Application.Current.MainPage.DisplayAlert("Import", "Dane zostały zaimportowane.", "OK");
+                    await LoadFromDataAsync(merged);
+                    await SaveAsync();
+
+                    var confirmation = mode == ImportMode.Replace
+                        ? "Bieżące dane zostały nadpisane danymi z pliku."
+                        : "Elementy z pliku zostały dodane do istniejącej listy.";
+
+                    if (Application.Current?.MainPage != null)
+                    {
+                        await Application.Current.MainPage.DisplayAlert("Import", confirmation, "OK");
+                    }
                 }
                 catch (Exception ex)
                 {
-                    await Application.Current.MainPage.DisplayAlert("Import", $"Błąd importu: {ex.Message}", "OK");
+                    await Application.Current.MainPage.DisplayAlert("Import", $"Bł��d importu: {ex.Message}", "OK");
                 }
             });
 
@@ -310,12 +366,11 @@ namespace ShoppingList.ViewModels
         {
             _data = await _dataService.LoadAsync();
             await LoadFromDataAsync(_data);
-            foreach (var c in Categories) AttachCategoryHandlers(c);
-            ApplyShopFilter();
         }
 
         private async Task LoadFromDataAsync(AppData data)
         {
+            _data = data;
             Categories.Clear();
             Recipes.Clear();
 
@@ -340,6 +395,16 @@ namespace ShoppingList.ViewModels
 
             RefreshShopView();
             ApplyShopFilter();
+            AttachHandlersForAllCategories();
+        }
+
+        private void AttachHandlersForAllCategories()
+        {
+            foreach (var c in Categories)
+            {
+                DetachCategoryHandlers(c);
+                AttachCategoryHandlers(c);
+            }
         }
 
         private AppData BuildAppDataFromVm()
@@ -432,21 +497,51 @@ namespace ShoppingList.ViewModels
             ShopViewProducts.Clear();
             if (!IsShopView) return;
 
-            // Dla każdej kategorii w kolejności Order zbieramy produkty niekupione
             var orderedCategories = Categories.OrderBy(c => c.Model?.Order ?? 0).ThenBy(c => c.Name).ToList();
-            foreach (var cat in orderedCategories)
-            {
-                var products = cat.Products.Where(p => !p.IsBought).OrderBy(p => p.Name).ToList();
-                if (!products.Any()) continue;
-                // zachowujemy grupę (opcjonalnie używana gdzie indziej)
-                var group = new ProductGroup(cat.Name, cat.Model?.Order ?? 0, products);
-                ShopViewGroups.Add(group);
+            var flatProducts = orderedCategories
+                .SelectMany(c => c.Products
+                    .Where(p => !p.IsBought)
+                    .Select(p => new { Category = c, Product = p }))
+                .ToList();
 
-                // dodajemy płaskie elementy do listy widoku sklepu (kolejność: po kategoriach, potem po nazwie)
-                foreach (var p in products)
-                {
-                    ShopViewProducts.Add(p);
-                }
+            switch (SelectedShopSortOption?.Option ?? ShopSortOption.Category)
+            {
+                case ShopSortOption.Name:
+                    foreach (var entry in flatProducts
+                        .OrderBy(e => e.Product.Name, StringComparer.CurrentCultureIgnoreCase)
+                        .ThenBy(e => e.Category.Name, StringComparer.CurrentCultureIgnoreCase))
+                    {
+                        ShopViewProducts.Add(entry.Product);
+                    }
+                    break;
+                case ShopSortOption.Quantity:
+                    foreach (var entry in flatProducts
+                        .OrderByDescending(e => e.Product.Quantity)
+                        .ThenBy(e => e.Product.Name, StringComparer.CurrentCultureIgnoreCase)
+                        .ThenBy(e => e.Category.Name, StringComparer.CurrentCultureIgnoreCase))
+                    {
+                        ShopViewProducts.Add(entry.Product);
+                    }
+                    break;
+                default:
+                    foreach (var cat in orderedCategories)
+                    {
+                        var products = cat.Products
+                            .Where(p => !p.IsBought)
+                            .OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase)
+                            .ToList();
+                        if (!products.Any()) continue;
+
+                        var group = new ProductGroup(cat.Name, cat.Model?.Order ?? 0, products);
+                        ShopViewGroups.Add(group);
+                        foreach (var p in products) ShopViewProducts.Add(p);
+                    }
+                    break;
+            }
+
+            if ((SelectedShopSortOption?.Option ?? ShopSortOption.Category) != ShopSortOption.Category)
+            {
+                ShopViewGroups.Clear();
             }
         }
 
@@ -544,6 +639,26 @@ namespace ShoppingList.ViewModels
 
                 category.ApplyFilter(filter);
             }
+        }
+
+        private async Task<ImportMode?> PromptImportModeAsync()
+        {
+            var page = Application.Current?.MainPage;
+            if (page == null) return null;
+
+            var choice = await page.DisplayActionSheet(
+                "Jak chcesz zaimportować dane?",
+                "Anuluj",
+                null,
+                "Nadpisz bieżące dane",
+                "Dodaj do istniejących");
+
+            return choice switch
+            {
+                "Nadpisz bieżące dane" => ImportMode.Replace,
+                "Dodaj do istniejących" => ImportMode.Merge,
+                _ => (ImportMode?)null
+            };
         }
     }
 }

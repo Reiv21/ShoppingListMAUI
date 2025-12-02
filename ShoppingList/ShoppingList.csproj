@@ -68,7 +68,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Models\" />
       <Folder Include="View\" />
     </ItemGroup>
 

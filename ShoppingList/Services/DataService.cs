@@ -80,5 +80,115 @@ namespace ShoppingList.Services
 
             return data;
         }
+
+        public AppData Merge(AppData? currentData, AppData importedData, ImportMode mode)
+        {
+            currentData ??= CreateDefaultData();
+            if (mode == ImportMode.Replace)
+            {
+                return importedData;
+            }
+
+            var merged = new AppData
+            {
+                Categories = currentData.Categories.Select(c => CloneCategory(c)).ToList(),
+                Products = currentData.Products.Select(p => CloneProduct(p)).ToList(),
+                Recipes = currentData.Recipes.Select(r => CloneRecipe(r)).ToList()
+            };
+
+            foreach (var cat in importedData.Categories)
+            {
+                if (!merged.Categories.Any(c => string.Equals(c.Name, cat.Name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    var clone = CloneCategory(cat);
+                    clone.Order = merged.Categories.Count;
+                    merged.Categories.Add(clone);
+                }
+            }
+
+            foreach (var product in importedData.Products)
+            {
+                var category = merged.Categories.FirstOrDefault(c => c.Id == product.CategoryId);
+                if (category == null)
+                {
+                    var originalCategory = importedData.Categories.FirstOrDefault(c => c.Id == product.CategoryId);
+                    if (originalCategory != null)
+                    {
+                        var cloneCategory = merged.Categories.FirstOrDefault(c => string.Equals(c.Name, originalCategory.Name, StringComparison.OrdinalIgnoreCase));
+                        if (cloneCategory == null)
+                        {
+                            cloneCategory = CloneCategory(originalCategory);
+                            cloneCategory.Order = merged.Categories.Count;
+                            merged.Categories.Add(cloneCategory);
+                        }
+                        category = cloneCategory;
+                    }
+                }
+
+                var existing = merged.Products.FirstOrDefault(p => string.Equals(p.Name, product.Name, StringComparison.OrdinalIgnoreCase) && p.CategoryId == category?.Id);
+                if (existing == null)
+                {
+                    var clone = CloneProduct(product);
+                    clone.CategoryId = category?.Id ?? clone.CategoryId;
+                    merged.Products.Add(clone);
+                }
+                else
+                {
+                    existing.Quantity += product.Quantity;
+                    existing.IsBought &= product.IsBought;
+                }
+            }
+
+            foreach (var recipe in importedData.Recipes)
+            {
+                if (!merged.Recipes.Any(r => string.Equals(r.Title, recipe.Title, StringComparison.OrdinalIgnoreCase)))
+                {
+                    merged.Recipes.Add(CloneRecipe(recipe));
+                }
+            }
+
+            return merged;
+        }
+
+        private static Category CloneCategory(Category source)
+        {
+            return new Category
+            {
+                Id = source.Id,
+                Name = source.Name,
+                Order = source.Order
+            };
+        }
+
+        private static Product CloneProduct(Product source)
+        {
+            return new Product
+            {
+                Id = source.Id,
+                Name = source.Name,
+                Unit = source.Unit,
+                Quantity = source.Quantity,
+                IsBought = source.IsBought,
+                IsOptional = source.IsOptional,
+                Store = source.Store,
+                CategoryId = source.CategoryId
+            };
+        }
+
+        private static Recipe CloneRecipe(Recipe source)
+        {
+            var clone = new Recipe
+            {
+                Id = source.Id,
+                Title = source.Title,
+                Description = source.Description,
+                IsExpanded = source.IsExpanded
+            };
+            foreach (var ingredient in source.Ingredients)
+            {
+                clone.Ingredients.Add(CloneProduct(ingredient));
+            }
+            return clone;
+        }
     }
 }
