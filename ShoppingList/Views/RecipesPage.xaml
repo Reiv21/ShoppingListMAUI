@@ -5,10 +5,19 @@
     x:Class="ShoppingList.Views.RecipesPage"
     Title="Przepisy">
 
-  <Grid Padding="10" RowDefinitions="Auto,*">
+  <Grid Padding="10" RowDefinitions="Auto,Auto,*">
     <Label Text="Przepisy" FontAttributes="Bold" FontSize="20" Grid.Row="0" />
 
-    <CollectionView Grid.Row="1"
+    <Frame Grid.Row="1" Padding="10" Margin="0,10,0,5">
+      <VerticalStackLayout Spacing="6">
+        <Label Text="Dodaj nowy przepis" FontAttributes="Bold" />
+        <Entry Placeholder="Tytuł przepisu" Text="{Binding NewRecipeTitle}" />
+        <Entry Placeholder="Opis" Text="{Binding NewRecipeDescription}" />
+        <Button Text="Zapisz przepis" Command="{Binding AddRecipeCommand}" />
+      </VerticalStackLayout>
+    </Frame>
+
+    <CollectionView Grid.Row="2"
                     ItemsSource="{Binding Recipes}"
                     SelectionMode="None"
                     ItemsLayout="VerticalList">
