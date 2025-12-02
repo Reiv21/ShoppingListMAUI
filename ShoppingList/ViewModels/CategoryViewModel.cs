@@ -44,12 +44,12 @@ namespace ShoppingList.ViewModels
 
             AddProductCommand = new Command(() =>
             {
-                var name = string.IsNullOrWhiteSpace(NewProductName) ? "Nowy produkt" : NewProductName.Trim();
-                var unit = string.IsNullOrWhiteSpace(NewProductUnit) ? "szt." : NewProductUnit.Trim();
-                var qty = NewProductQuantity <= 0 ? 1 : NewProductQuantity;
+                string name = string.IsNullOrWhiteSpace(NewProductName) ? "Nowy produkt" : NewProductName.Trim();
+                string unit = string.IsNullOrWhiteSpace(NewProductUnit) ? "szt." : NewProductUnit.Trim();
+                double qty = NewProductQuantity <= 0 ? 1 : NewProductQuantity;
 
-                var p = new Product { Name = name, Unit = unit, Quantity = qty, CategoryId = Id };
-                var vm = new ProductViewModel(p);
+                Product p = new Product { Name = name, Unit = unit, Quantity = qty, CategoryId = Id };
+                ProductViewModel vm = new ProductViewModel(p);
                 vm.OnDelete += (s, e) => Products.Remove(vm);
                 vm.OnBoughtChanged += (s, e) => MoveBoughtToEnd(vm);
                 Products.Add(vm);
@@ -79,8 +79,8 @@ namespace ShoppingList.ViewModels
 
             _lastFilter = term;
             term = term.Trim().ToLowerInvariant();
-            var matches = Products
-                .Where(p => !string.IsNullOrWhiteSpace(p.Store) && 
+            System.Collections.Generic.List<ProductViewModel> matches = Products
+                .Where(p => !string.IsNullOrWhiteSpace(p.Store) &&
                             p.Store.ToLowerInvariant().Contains(term))
                 .ToList();
 
@@ -101,7 +101,7 @@ namespace ShoppingList.ViewModels
         private void UpdateFilteredProducts(System.Collections.Generic.IList<ProductViewModel> items, bool forceVisible = false)
         {
             FilteredProducts.Clear();
-            foreach (var item in items) FilteredProducts.Add(item);
+            foreach (ProductViewModel item in items) FilteredProducts.Add(item);
             HasFilterMatch = forceVisible || items.Count > 0;
         }
 
@@ -128,12 +128,12 @@ namespace ShoppingList.ViewModels
                     else
                     {
                         // liczymy kupione przed aktualizacja
-                        var bought = Products.Where(p => p.IsBought).ToList();
+                        System.Collections.Generic.List<ProductViewModel> bought = Products.Where(p => p.IsBought).ToList();
 
                         if (Products.Contains(vm))
                         {
                             Products.Remove(vm);
-                            var index = Products.Count - bought.Count;
+                            int index = Products.Count - bought.Count;
                             if (index < 0) index = 0;
                             if (index > Products.Count) index = Products.Count;
                             Products.Insert(index, vm);
@@ -150,16 +150,16 @@ namespace ShoppingList.ViewModels
 
         public void SortProductsByName()
         {
-            var ordered = Products.OrderBy(p => p.IsBought).ThenBy(p => p.Name).ToList();
+            System.Collections.Generic.List<ProductViewModel> ordered = Products.OrderBy(p => p.IsBought).ThenBy(p => p.Name).ToList();
             Products.Clear();
-            foreach (var p in ordered) Products.Add(p);
+            foreach (ProductViewModel p in ordered) Products.Add(p);
         }
 
         public void SortProductsByQuantity()
         {
-            var ordered = Products.OrderBy(p => p.IsBought).ThenBy(p => p.Quantity).ToList();
+            System.Collections.Generic.List<ProductViewModel> ordered = Products.OrderBy(p => p.IsBought).ThenBy(p => p.Quantity).ToList();
             Products.Clear();
-            foreach (var p in ordered) Products.Add(p);
+            foreach (ProductViewModel p in ordered) Products.Add(p);
         }
     }
 }

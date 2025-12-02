@@ -7,6 +7,7 @@ using ShoppingList.Models;
 using ShoppingList.Services;
 using System.Collections.Specialized;
 using System.Collections.Generic;
+using System.IO;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
 using CommunityToolkit.Maui.Storage;
@@ -163,9 +164,9 @@ namespace ShoppingList.ViewModels
 
             AddCategoryCommand = new Command<string>(name =>
             {
-                var category = new Category { Name = string.IsNullOrWhiteSpace(name) ? "Nowa kategoria" 
+                Category category = new Category { Name = string.IsNullOrWhiteSpace(name) ? "Nowa kategoria" 
                     : name, Order = Categories.Count };
-                var categoryVm = new CategoryViewModel(category);
+                CategoryViewModel categoryVm = new CategoryViewModel(category);
                 AttachCategoryHandlers(categoryVm);
                 Categories.Add(categoryVm);
             });
@@ -186,16 +187,16 @@ namespace ShoppingList.ViewModels
             {
                 try
                 {
-                    var data = BuildAppDataFromVm();
-                    var json = System.Text.Json.JsonSerializer.Serialize(data, new System.Text.Json.JsonSerializerOptions
+                    AppData data = BuildAppDataFromVm();
+                    string json = System.Text.Json.JsonSerializer.Serialize(data, new System.Text.Json.JsonSerializerOptions
                     {
                         WriteIndented = true
                     });
 
-                    var fileName = $"lista_zakupow_{DateTime.Now:yyyyMMdd_HHmmss}.json";
-                    using var stream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
+                    string fileName = $"lista_zakupow_{DateTime.Now:yyyyMMdd_HHmmss}.json";
+                    using System.IO.MemoryStream stream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
 
-                    var result = await FileSaver.Default.SaveAsync(fileName, stream, default);
+                    FileSaverResult result = await FileSaver.Default.SaveAsync(fileName, stream, default);
 
                     if (result.IsSuccessful)
                     {
@@ -216,39 +217,39 @@ namespace ShoppingList.ViewModels
             {
                 try
                 {
-                    var customTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
-                    {
-                        { DevicePlatform.WinUI, new[] { "*.json" } },
-                        { DevicePlatform.Android, new[] { "application/json" } },
-                        { DevicePlatform.iOS, new[] { "public.json" } },
-                        { DevicePlatform.MacCatalyst, new[] { "public.json" } }
-                    });
-
-                    var pickResult = await FilePicker.PickAsync(new PickOptions
-                    {
-                        PickerTitle = "Wybierz plik listy zakupów",
-                        FileTypes = customTypes
-                    });
-
-                    if (pickResult == null) return;
-
-                    var mode = await PromptImportModeAsync();
-                    if (mode == null) return;
-
-                    using var stream = await pickResult.OpenReadAsync();
-                    using var reader = new System.IO.StreamReader(stream);
-                    var json = await reader.ReadToEndAsync();
-
-                    var imported = System.Text.Json.JsonSerializer.Deserialize<AppData>(json) ?? new AppData();
-                    var current = BuildAppDataFromVm();
-                    var merged = _dataService.Merge(current, imported, mode.Value);
-
-                    await LoadFromDataAsync(merged);
-                    await SaveAsync();
-
-                    var confirmation = mode == ImportMode.Replace
-                        ? "Bieżące dane zostały nadpisane danymi z pliku."
-                        : "Elementy z pliku zostały dodane do istniejącej listy.";
+                    FilePickerFileType customTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
+                     {
+                         { DevicePlatform.WinUI, new[] { "*.json" } },
+                         { DevicePlatform.Android, new[] { "application/json" } },
+                         { DevicePlatform.iOS, new[] { "public.json" } },
+                         { DevicePlatform.MacCatalyst, new[] { "public.json" } }
+                     });
+ 
+                    FileResult? pickResult = await FilePicker.PickAsync(new PickOptions
+                     {
+                         PickerTitle = "Wybierz plik listy zakupów",
+                         FileTypes = customTypes
+                     });
+ 
+                     if (pickResult == null) return;
+ 
+                     ImportMode? mode = await PromptImportModeAsync();
+                     if (mode == null) return;
+ 
+                     using Stream stream = await pickResult.OpenReadAsync();
+                     using System.IO.StreamReader reader = new System.IO.StreamReader(stream);
+                     string json = await reader.ReadToEndAsync();
+ 
+                     AppData imported = System.Text.Json.JsonSerializer.Deserialize<AppData>(json) ?? new AppData();
+                     AppData current = BuildAppDataFromVm();
+                     AppData merged = _dataService.Merge(current, imported, mode.Value);
+ 
+                     await LoadFromDataAsync(merged);
+                     await SaveAsync();
+ 
+                     string confirmation = mode == ImportMode.Replace
+                         ? "Bieżące dane zostały nadpisane danymi z pliku."
+                         : "Elementy z pliku zostały dodane do istniejącej listy.";
 
                     if (Application.Current?.MainPage != null)
                     {
@@ -263,33 +264,33 @@ namespace ShoppingList.ViewModels
 
             SortByNameCommand = new Command(() =>
             {
-                foreach (var c in Categories) c.SortProductsByName();
+                foreach (CategoryViewModel c in Categories) c.SortProductsByName();
                 RefreshShopView();
             });
-
+ 
             SortByQuantityCommand = new Command(() =>
             {
-                foreach (var c in Categories) c.SortProductsByQuantity();
+                foreach (CategoryViewModel c in Categories) c.SortProductsByQuantity();
                 RefreshShopView();
             });
-
+ 
             SortByCategoryCommand = new Command(() =>
             {
-                var ordered = Categories.OrderBy(c => c.Name).ToList();
+                System.Collections.Generic.List<CategoryViewModel> ordered = Categories.OrderBy(c => c.Name).ToList();
                 Categories.Clear();
-                foreach (var c in ordered) Categories.Add(c);
+                foreach (CategoryViewModel c in ordered) Categories.Add(c);
                 RefreshShopView();
             });
 
             AddRecipeCommand = new Command(async () =>
             {
-                if (string.IsNullOrWhiteSpace(NewRecipeTitle)) return;
-
-                var recipe = new Recipe
-                {
-                    Title = NewRecipeTitle.Trim(),
-                    Description = NewRecipeDescription?.Trim() ?? string.Empty
-                };
+                 if (string.IsNullOrWhiteSpace(NewRecipeTitle)) return;
+ 
+                Recipe recipe = new Recipe
+                 {
+                     Title = NewRecipeTitle.Trim(),
+                     Description = NewRecipeDescription?.Trim() ?? string.Empty
+                 };
 
                 Recipes.Add(recipe);
                 NewRecipeTitle = string.Empty;
@@ -300,9 +301,9 @@ namespace ShoppingList.ViewModels
 
             ImportRecipeCommand = new Command<Recipe>(async recipe =>
             {
-                if (recipe == null) return;
-
-                var category = GetOrCreateCategoryForRecipe(recipe.Title);
+                 if (recipe == null) return;
+ 
+                CategoryViewModel? category = GetOrCreateCategoryForRecipe(recipe.Title);
                 if (category == null) return;
 
                 AddRecipeIngredientsToCategory(recipe, category.Id);
@@ -312,21 +313,21 @@ namespace ShoppingList.ViewModels
 
             AddIngredientToRecipeCommand = new Command<Recipe>(async recipe =>
             {
-                var target = recipe ?? SelectedRecipe;
-                if (target == null) return;
+                Recipe? target = recipe ?? SelectedRecipe;
+                 if (target == null) return;
+ 
+                string name = string.IsNullOrWhiteSpace(NewIngredientName) ? "Nowy składnik" : NewIngredientName.Trim();
+                string unit = string.IsNullOrWhiteSpace(NewIngredientUnit) ? "szt." : NewIngredientUnit.Trim();
+                double quantity = NewIngredientQuantity <= 0 ? 1 : NewIngredientQuantity;
 
-                var name = string.IsNullOrWhiteSpace(NewIngredientName) ? "Nowy składnik" : NewIngredientName.Trim();
-                var unit = string.IsNullOrWhiteSpace(NewIngredientUnit) ? "szt." : NewIngredientUnit.Trim();
-                var quantity = NewIngredientQuantity <= 0 ? 1 : NewIngredientQuantity;
-
-                var ingredient = new Product
-                {
-                    Name = name,
-                    Unit = unit,
-                    Quantity = quantity,
-                    Store = NewIngredientStore?.Trim() ?? string.Empty,
-                    IsOptional = NewIngredientIsOptional
-                };
+                Product ingredient = new Product
+                 {
+                     Name = name,
+                     Unit = unit,
+                     Quantity = quantity,
+                     Store = NewIngredientStore?.Trim() ?? string.Empty,
+                     IsOptional = NewIngredientIsOptional
+                 };
 
                 target.Ingredients.Add(ingredient);
 
@@ -374,26 +375,26 @@ namespace ShoppingList.ViewModels
             _data = data;
             Categories.Clear();
             Recipes.Clear();
-
-            foreach (var c in data.Categories.OrderBy(c => c.Order))
+ 
+            foreach (Category c in data.Categories.OrderBy(c => c.Order))
             {
-                var cvm = new CategoryViewModel(c);
-                var products = data.Products.Where(p => p.CategoryId == c.Id).ToList();
-                foreach (var p in products)
-                {
-                    var pvm = new ProductViewModel(p);
-                    pvm.OnDelete += (s, e) => cvm.Products.Remove(pvm);
-                    pvm.OnBoughtChanged += (s, e) => cvm.MoveBoughtToEnd(pvm);
-                    cvm.Products.Add(pvm);
-                }
-                Categories.Add(cvm);
+                CategoryViewModel cvm = new CategoryViewModel(c);
+                System.Collections.Generic.List<Product> products = data.Products.Where(p => p.CategoryId == c.Id).ToList();
+                foreach (Product p in products)
+                 {
+                    ProductViewModel pvm = new ProductViewModel(p);
+                     pvm.OnDelete += (s, e) => cvm.Products.Remove(pvm);
+                     pvm.OnBoughtChanged += (s, e) => cvm.MoveBoughtToEnd(pvm);
+                     cvm.Products.Add(pvm);
+                 }
+                 Categories.Add(cvm);
             }
-
-            foreach (var recipe in data.Recipes)
+ 
+            foreach (Recipe recipe in data.Recipes)
             {
-                Recipes.Add(recipe);
+                 Recipes.Add(recipe);
             }
-
+ 
             RefreshShopView();
             ApplyShopFilter();
             AttachHandlersForAllCategories();
@@ -401,36 +402,36 @@ namespace ShoppingList.ViewModels
 
         private void AttachHandlersForAllCategories()
         {
-            foreach (var c in Categories)
+            foreach (CategoryViewModel c in Categories)
             {
-                DetachCategoryHandlers(c);
-                AttachCategoryHandlers(c);
+                 DetachCategoryHandlers(c);
+                 AttachCategoryHandlers(c);
             }
         }
-
+ 
         private AppData BuildAppDataFromVm()
         {
-            var data = new AppData();
-            foreach (var c in Categories)
+            AppData data = new AppData();
+            foreach (CategoryViewModel c in Categories)
             {
-                data.Categories.Add(c.Model);
-                foreach (var p in c.Products)
-                {
-                    data.Products.Add(p.Model);
-                }
+                 data.Categories.Add(c.Model);
+                foreach (ProductViewModel p in c.Products)
+                 {
+                     data.Products.Add(p.Model);
+                 }
             }
-
-            foreach (var r in Recipes)
+ 
+            foreach (Recipe r in Recipes)
             {
-                data.Recipes.Add(r);
+                 data.Recipes.Add(r);
             }
-
+ 
             return data;
         }
-
+ 
         public async Task SaveAsync()
         {
-            var data = BuildAppDataFromVm();
+            AppData data = BuildAppDataFromVm();
             await _dataService.SaveAsync(data);
         }
 
@@ -463,7 +464,7 @@ namespace ShoppingList.ViewModels
                 ApplyShopFilter();
             };
 
-            foreach (var p in cvm.Products) AttachProductHandler(p);
+            foreach (ProductViewModel p in cvm.Products) AttachProductHandler(p);
 
             RefreshShopView();
         }
@@ -471,7 +472,7 @@ namespace ShoppingList.ViewModels
         private void DetachCategoryHandlers(CategoryViewModel cvm)
         {
             if (cvm == null) return;
-            foreach (var p in cvm.Products) DetachProductHandler(p);
+            foreach (ProductViewModel p in cvm.Products) DetachProductHandler(p);
         }
 
         private void AttachProductHandler(ProductViewModel pvm)
@@ -497,45 +498,46 @@ namespace ShoppingList.ViewModels
             ShopViewGroups.Clear();
             ShopViewProducts.Clear();
             if (!IsShopView) return;
-
-            var orderedCategories = Categories.OrderBy(c => c.Model?.Order ?? 0).ThenBy(c => c.Name).ToList();
-            var flatProducts = orderedCategories
-                .SelectMany(c => c.Products
-                    .Where(p => !p.IsBought)
-                    .Select(p => new { Category = c, Product = p }))
-                .ToList();
-
-            switch (SelectedShopSortOption?.Option ?? ShopSortOption.Category)
-            {
-                case ShopSortOption.Name:
+ 
+            System.Collections.Generic.List<CategoryViewModel> orderedCategories = Categories.OrderBy(c => c.Model?.Order ?? 0).ThenBy(c => c.Name).ToList();
+            System.Collections.Generic.List<(CategoryViewModel Category, ProductViewModel Product)> flatProducts = orderedCategories
+                 .SelectMany(c => c.Products
+                     .Where(p => !p.IsBought)
+                     .Select(p => new { Category = c, Product = p }))
+                 .Select(x => (x.Category, x.Product))
+                 .ToList();
+ 
+             switch (SelectedShopSortOption?.Option ?? ShopSortOption.Category)
+             {
+                 case ShopSortOption.Name:
                     foreach (var entry in flatProducts
                         .OrderBy(e => e.Product.Name, StringComparer.CurrentCultureIgnoreCase)
                         .ThenBy(e => e.Category.Name, StringComparer.CurrentCultureIgnoreCase))
-                    {
-                        ShopViewProducts.Add(entry.Product);
-                    }
-                    break;
-                case ShopSortOption.Quantity:
+                     {
+                         ShopViewProducts.Add(entry.Product);
+                     }
+                     break;
+                 case ShopSortOption.Quantity:
                     foreach (var entry in flatProducts
                         .OrderByDescending(e => e.Product.Quantity)
                         .ThenBy(e => e.Product.Name, StringComparer.CurrentCultureIgnoreCase)
                         .ThenBy(e => e.Category.Name, StringComparer.CurrentCultureIgnoreCase))
+                     {
+                         ShopViewProducts.Add(entry.Product);
+                     }
+                     break;
+                 default:
+                    foreach (CategoryViewModel cat in orderedCategories)
                     {
-                        ShopViewProducts.Add(entry.Product);
-                    }
-                    break;
-                default:
-                    foreach (var cat in orderedCategories)
-                    {
-                        var products = cat.Products
-                            .Where(p => !p.IsBought)
-                            .OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase)
-                            .ToList();
-                        if (!products.Any()) continue;
-
-                        var group = new ProductGroup(cat.Name, cat.Model?.Order ?? 0, products);
+                        System.Collections.Generic.List<ProductViewModel> products = cat.Products
+                             .Where(p => !p.IsBought)
+                             .OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase)
+                             .ToList();
+                         if (!products.Any()) continue;
+ 
+                        ProductGroup group = new ProductGroup(cat.Name, cat.Model?.Order ?? 0, products);
                         ShopViewGroups.Add(group);
-                        foreach (var p in products) ShopViewProducts.Add(p);
+                        foreach (ProductViewModel p in products) ShopViewProducts.Add(p);
                     }
                     break;
             }
@@ -548,111 +550,111 @@ namespace ShoppingList.ViewModels
 
         private CategoryViewModel? GetOrCreateCategoryForRecipe(string title)
         {
-            var baseName = string.IsNullOrWhiteSpace(title) ? "Przepis" : title.Trim();
-
-            var existingExact = Categories.FirstOrDefault(c => string.Equals(c.Name, baseName, StringComparison.OrdinalIgnoreCase));
-            if (existingExact == null)
-            {
-                var category = new Category
-                {
-                    Name = baseName,
-                    Order = Categories.Count
-                };
-                var vm = new CategoryViewModel(category);
-                AttachCategoryHandlers(vm);
-                Categories.Add(vm);
-                return vm;
-            }
-
-            var sameBase = Categories
-                .Select(c => c.Name)
-                .Where(n => n != null && (string.Equals(n, baseName, StringComparison.OrdinalIgnoreCase) || n.StartsWith(baseName + " - ", StringComparison.OrdinalIgnoreCase)))
-                .ToList();
-
-            var maxSuffix = 0;
-            foreach (var name in sameBase)
-            {
-                if (string.Equals(name, baseName, StringComparison.OrdinalIgnoreCase))
-                {
-                    maxSuffix = Math.Max(maxSuffix, 0);
-                    continue;
-                }
-
-                var parts = name.Substring(baseName.Length).TrimStart();
-                if (parts.StartsWith("- ", StringComparison.Ordinal))
-                {
-                    var numberPart = parts.Substring(2);
-                    if (int.TryParse(numberPart, out var n))
-                    {
-                        if (n > maxSuffix) maxSuffix = n;
-                    }
-                }
-            }
-
-            var newName = maxSuffix == 0 ? $"{baseName} - 1" : $"{baseName} - {maxSuffix + 1}";
-
-            var newCategory = new Category
-            {
-                Name = newName,
-                Order = Categories.Count
-            };
-            var newVm = new CategoryViewModel(newCategory);
-            AttachCategoryHandlers(newVm);
-            Categories.Add(newVm);
-            return newVm;
+            string baseName = string.IsNullOrWhiteSpace(title) ? "Przepis" : title.Trim();
+ 
+            CategoryViewModel? existingExact = Categories.FirstOrDefault(c => string.Equals(c.Name, baseName, StringComparison.OrdinalIgnoreCase));
+             if (existingExact == null)
+             {
+                Category category = new Category
+                 {
+                     Name = baseName,
+                     Order = Categories.Count
+                 };
+                CategoryViewModel vm = new CategoryViewModel(category);
+                 AttachCategoryHandlers(vm);
+                 Categories.Add(vm);
+                 return vm;
+             }
+ 
+            System.Collections.Generic.List<string?> sameBase = Categories
+                 .Select(c => c.Name)
+                 .Where(n => n != null && (string.Equals(n, baseName, StringComparison.OrdinalIgnoreCase) || n.StartsWith(baseName + " - ", StringComparison.OrdinalIgnoreCase)))
+                 .ToList();
+ 
+            int maxSuffix = 0;
+            foreach (string? name in sameBase)
+             {
+                 if (string.Equals(name, baseName, StringComparison.OrdinalIgnoreCase))
+                 {
+                     maxSuffix = Math.Max(maxSuffix, 0);
+                     continue;
+                 }
+ 
+                string parts = name.Substring(baseName.Length).TrimStart();
+                 if (parts.StartsWith("- ", StringComparison.Ordinal))
+                 {
+                    string numberPart = parts.Substring(2);
+                    if (int.TryParse(numberPart, out int n))
+                     {
+                         if (n > maxSuffix) maxSuffix = n;
+                     }
+                 }
+             }
+ 
+            string newName = maxSuffix == 0 ? $"{baseName} - 1" : $"{baseName} - {maxSuffix + 1}";
+ 
+            Category newCategory = new Category
+             {
+                 Name = newName,
+                 Order = Categories.Count
+             };
+            CategoryViewModel newVm = new CategoryViewModel(newCategory);
+             AttachCategoryHandlers(newVm);
+             Categories.Add(newVm);
+             return newVm;
         }
-
+ 
         public void AddRecipeIngredientsToCategory(Recipe recipe, Guid categoryId)
         {
-            var cat = Categories.FirstOrDefault(c => c.Id == categoryId);
-            if (cat == null) return;
-
-            foreach (var ing in recipe.Ingredients)
-            {
-                var newP = new Product
-                {
-                    Name = ing.Name,
-                    Unit = ing.Unit,
-                    Quantity = ing.Quantity,
-                    Store = ing.Store,
-                    IsOptional = ing.IsOptional,
-                    IsBought = false,
-                    CategoryId = categoryId
+            CategoryViewModel? cat = Categories.FirstOrDefault(c => c.Id == categoryId);
+             if (cat == null) return;
+ 
+            foreach (Product ing in recipe.Ingredients)
+             {
+                Product newP = new Product
+                 {
+                     Name = ing.Name,
+                     Unit = ing.Unit,
+                     Quantity = ing.Quantity,
+                     Store = ing.Store,
+                     IsOptional = ing.IsOptional,
+                     IsBought = false,
+                     CategoryId = categoryId
                 };
 
-                var pvm = new ProductViewModel(newP);
-                pvm.OnDelete += (s, e) => cat.Products.Remove(pvm);
-                pvm.OnBoughtChanged += (s, e) => cat.MoveBoughtToEnd(pvm);
-                cat.Products.Add(pvm);
-            }
+                ProductViewModel pvm = new ProductViewModel(newP);
+                 pvm.OnDelete += (s, e) => cat.Products.Remove(pvm);
+                 pvm.OnBoughtChanged += (s, e) => cat.MoveBoughtToEnd(pvm);
+                 cat.Products.Add(pvm);
+             }
         }
-
+ 
         private void ApplyShopFilter()
         {
-            var filter = ShopFilterText?.Trim();
-            foreach (var category in Categories)
-            {
-                if (string.IsNullOrWhiteSpace(filter))
-                {
+            string? filter = ShopFilterText?.Trim();
+            foreach (CategoryViewModel category in Categories)
+             {
+                 if (string.IsNullOrWhiteSpace(filter))
+                 {
                     category.ResetFilter();
                     continue;
-                }
+                 }
 
                 category.ApplyFilter(filter);
-            }
+             }
         }
-
+ 
         private async Task<ImportMode?> PromptImportModeAsync()
         {
-            var page = Application.Current?.MainPage;
-            if (page == null) return null;
-
-            var choice = await page.DisplayActionSheet(
-                "Jak chcesz zaimportować dane?",
-                "Anuluj",
-                null,
-                "Nadpisz bieżące dane",
-                "Dodaj do istniejących");
+            Page? page = Application.Current?.MainPage;
+             if (page == null) return null;
+ 
+            string choice = await page.DisplayActionSheet(
+                 "Jak chcesz zaimportować dane?",
+                 "Anuluj",
+                 null,
+                 "Nadpisz bieżące dane",
+                 "Dodaj do istniejących");
 
             return choice switch
             {
