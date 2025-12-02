@@ -8,7 +8,6 @@ namespace ShoppingList.Views.Controls
         public ProductView()
         {
             InitializeComponent();
-            // BindingContext is set externally (np. in CategoryView)
         }
     }
 }

@@ -33,7 +33,7 @@ namespace ShoppingList.ViewModels
 
         public ICommand AddProductCommand { get; }
 
-        // nowy: komenda do zwijania/rozwijania kategorii
+        // komenda do zwijania/rozwijania kategorii
         public ICommand ToggleExpandCommand { get; }
 
         public CategoryViewModel(Category c)
@@ -69,7 +69,7 @@ namespace ShoppingList.ViewModels
 
         public void ApplyFilter(string? filterText)
         {
-            var term = filterText ?? _lastFilter;
+            string term = filterText ?? _lastFilter;
             if (string.IsNullOrWhiteSpace(term))
             {
                 _lastFilter = string.Empty;
@@ -80,7 +80,8 @@ namespace ShoppingList.ViewModels
             _lastFilter = term;
             term = term.Trim().ToLowerInvariant();
             var matches = Products
-                .Where(p => !string.IsNullOrWhiteSpace(p.Store) && p.Store.ToLowerInvariant().Contains(term))
+                .Where(p => !string.IsNullOrWhiteSpace(p.Store) && 
+                            p.Store.ToLowerInvariant().Contains(term))
                 .ToList();
 
             UpdateFilteredProducts(matches);
@@ -106,8 +107,12 @@ namespace ShoppingList.ViewModels
 
         public void MoveBoughtToEnd(ProductViewModel vm)
         {
-            // Przenieś modyfikacje kolekcji na główny wątek i opóźnij wykonanie,
-            // aby uniknąć modyfikacji kolekcji podczas obsługi CollectionChanged.
+            // przenosi kupione pozycje na koniec kolekcji lub niekupione przed kupionymi
+            // bez tworzenia nowej kolekci/zmiany referencji
+            // modyfikacja kolejnosci odbywa sie tutaj gdy zmienia się stan IsBought konkretnego produktu
+
+            // BeginInvokeOnMainThread odracza wykonanie poza biezace zdarzenie CollectionChanged,
+            // co zapobiega wyjątkom typu "collection was modified" i problema z ods UI.
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 try
@@ -122,7 +127,7 @@ namespace ShoppingList.ViewModels
                     }
                     else
                     {
-                        // Oblicz liczbę kupionych przed aktualizacją
+                        // liczymy kupione przed aktualizacja
                         var bought = Products.Where(p => p.IsBought).ToList();
 
                         if (Products.Contains(vm))
@@ -137,7 +142,8 @@ namespace ShoppingList.ViewModels
                 }
                 catch
                 {
-                    // w razie bardzo rzadkich wyścigów — ignoruj aby nie zablokować UI
+                    // nie powinno wywalic, jednak nie ufam MAUI wiec jest ten catch i wszystko powinno smigac
+                    // z pustym catchiem, dzieki temu sie UI nie zablokuje w razie czego
                 }
             });
         }

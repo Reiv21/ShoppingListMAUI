@@ -10,7 +10,7 @@ namespace ShoppingList.Views
             InitializeComponent();
             BindingContext = viewModel;
         }
-
+        // ustawiamy widok na tryb listy zakupow aby wyswietlic odpowiednie dane
         protected override void OnAppearing()
         {
             base.OnAppearing();
@@ -20,7 +20,7 @@ namespace ShoppingList.Views
                 vm.RefreshShopViewCommand.Execute(null);
             }
         }
-
+        // przy opuszczaniu strony resetujemy tryb widoku
         protected override void OnDisappearing()
         {
             base.OnDisappearing();

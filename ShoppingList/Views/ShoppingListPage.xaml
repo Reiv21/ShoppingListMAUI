@@ -12,7 +12,7 @@
   </ContentPage.ToolbarItems>
 
   <Grid Padding="10" RowDefinitions="Auto,*" ColumnDefinitions="*">
-    <!-- Row 0: kontrole dodawania kategorii i przyciski akcji -->
+    <!-- row 0 kontrole dodawania kategori i przyciski akcji -->
     <StackLayout Orientation="Vertical" Spacing="8" Grid.Row="0">
       <StackLayout Orientation="Horizontal" Spacing="8">
         <Entry Text="{Binding ShopFilterText}" Placeholder="Filtruj po sklepie" HorizontalOptions="FillAndExpand"/>
@@ -31,7 +31,7 @@
       </StackLayout>
     </StackLayout>
 
-    <!-- Row 1: lista kategorii z produktami -->
+    <!-- row 1 lista kategori z produktami-->
     <CollectionView Grid.Row="1"
                     ItemsSource="{Binding Categories}"
                     SelectionMode="None"
@@ -57,7 +57,7 @@
                         CommandParameter="{Binding .}" />
               </Grid>
 
-              <!-- Sekcja z polami dodawania produktu i listą produktów - widoczna tylko gdy IsExpanded == true -->
+              <!-- pola dodawania produktu i lista produktow wiodoczna tylko gdy IsExpanded == true-->
               <StackLayout IsVisible="{Binding IsExpanded}">
                 <StackLayout Orientation="Horizontal" Spacing="6" Margin="0,6,0,6">
                   <Entry Placeholder="Nazwa produktu" Text="{Binding NewProductName}" HorizontalOptions="FillAndExpand"/>

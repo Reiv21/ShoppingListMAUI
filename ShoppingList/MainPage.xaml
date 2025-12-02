@@ -4,6 +4,7 @@
              x:Class="ShoppingList.MainPage">
 
     <ScrollView>
+        <!-- Nieuzywane :)-->
         <VerticalStackLayout
             Padding="30,0"
             Spacing="25">

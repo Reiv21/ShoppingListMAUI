@@ -152,7 +152,7 @@ namespace ShoppingList.ViewModels
         public MainViewModel()
         {
             Categories.CollectionChanged += Categories_CollectionChanged;
-
+            
             ShopSortOptions = new[]
             {
                 new ShopSortOptionEntry(ShopSortOption.Category, "Kategoria"),
@@ -163,7 +163,8 @@ namespace ShoppingList.ViewModels
 
             AddCategoryCommand = new Command<string>(name =>
             {
-                var category = new Category { Name = string.IsNullOrWhiteSpace(name) ? "Nowa kategoria" : name, Order = Categories.Count };
+                var category = new Category { Name = string.IsNullOrWhiteSpace(name) ? "Nowa kategoria" 
+                    : name, Order = Categories.Count };
                 var categoryVm = new CategoryViewModel(category);
                 AttachCategoryHandlers(categoryVm);
                 Categories.Add(categoryVm);
@@ -256,7 +257,7 @@ namespace ShoppingList.ViewModels
                 }
                 catch (Exception ex)
                 {
-                    await Application.Current.MainPage.DisplayAlert("Import", $"Bł��d importu: {ex.Message}", "OK");
+                    await Application.Current.MainPage.DisplayAlert("Import", $"Bład importu: {ex.Message}", "OK");
                 }
             });
 

@@ -3,8 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="ShoppingList.Views.Controls.ProductView">
   <ContentView.Content>
+    <!-- Widok pojedynczego produktu, umozliwia ponowne uzycie  -->
     <Grid Padding="8" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
-      <!-- checkbox + name -->
+      <!-- checkbox i name -->
       <StackLayout Orientation="Horizontal" Grid.Column="0" Grid.Row="0" VerticalOptions="Center">
         <CheckBox x:Name="BoughtCheck" IsChecked="{Binding IsBought}" VerticalOptions="Center" />
       </StackLayout>
@@ -27,7 +28,7 @@
         <Button Text="Usuń" Command="{Binding DeleteCommand}" />
       </StackLayout>
 
-      <!-- dodatkowe: opcjonalny i sklep -->
+      <!-- opcjonalny i sklep -->
       <StackLayout Orientation="Horizontal" Grid.ColumnSpan="3" Grid.Row="1" Spacing="10">
         <Label Text="Opcjonalny:" VerticalOptions="Center"/>
         <Switch IsToggled="{Binding IsOptional}" />

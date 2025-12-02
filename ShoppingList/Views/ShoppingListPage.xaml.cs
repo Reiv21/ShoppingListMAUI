@@ -16,6 +16,7 @@ namespace ShoppingList.Views
         protected override void OnAppearing()
         {
             base.OnAppearing();
+            // ustawiamy widok na tryb listy zakupow aby wyswietlic odpowiednie dane
             if (BindingContext is MainViewModel vm)
             {
                 vm.IsShopView = false;
