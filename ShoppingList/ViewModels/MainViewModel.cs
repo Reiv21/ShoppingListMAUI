@@ -166,7 +166,7 @@ namespace ShoppingList.ViewModels
             {
                 Category category = new Category { Name = string.IsNullOrWhiteSpace(name) ? "Nowa kategoria" 
                     : name, Order = Categories.Count };
-                CategoryViewModel categoryVm = new CategoryViewModel(category);
+                CategoryViewModel categoryVm = new CategoryViewModel(category, SaveAsync);
                 AttachCategoryHandlers(categoryVm);
                 Categories.Add(categoryVm);
             });
@@ -378,17 +378,21 @@ namespace ShoppingList.ViewModels
  
             foreach (Category c in data.Categories.OrderBy(c => c.Order))
             {
-                CategoryViewModel cvm = new CategoryViewModel(c);
+                CategoryViewModel cvm = new CategoryViewModel(c, SaveAsync);
                 System.Collections.Generic.List<Product> products = data.Products.Where(p => p.CategoryId == c.Id).ToList();
                 foreach (Product p in products)
                  {
-                    ProductViewModel pvm = new ProductViewModel(p);
-                     pvm.OnDelete += (s, e) => cvm.Products.Remove(pvm);
-                     pvm.OnBoughtChanged += (s, e) => cvm.MoveBoughtToEnd(pvm);
-                     cvm.Products.Add(pvm);
+                     ProductViewModel pvm = new ProductViewModel(p);
+                     pvm.OnDelete += (s, e) =>
+                     {
+                        cvm.Products.Remove(pvm);
+                        _ = SaveAsync();
+                     };
+                      pvm.OnBoughtChanged += (s, e) => cvm.MoveBoughtToEnd(pvm);
+                      cvm.Products.Add(pvm);
                  }
                  Categories.Add(cvm);
-            }
+             }
  
             foreach (Recipe recipe in data.Recipes)
             {
@@ -560,7 +564,7 @@ namespace ShoppingList.ViewModels
                      Name = baseName,
                      Order = Categories.Count
                  };
-                CategoryViewModel vm = new CategoryViewModel(category);
+                CategoryViewModel vm = new CategoryViewModel(category, SaveAsync);
                  AttachCategoryHandlers(vm);
                  Categories.Add(vm);
                  return vm;
@@ -598,7 +602,7 @@ namespace ShoppingList.ViewModels
                  Name = newName,
                  Order = Categories.Count
              };
-            CategoryViewModel newVm = new CategoryViewModel(newCategory);
+            CategoryViewModel newVm = new CategoryViewModel(newCategory, SaveAsync);
              AttachCategoryHandlers(newVm);
              Categories.Add(newVm);
              return newVm;
@@ -621,12 +625,17 @@ namespace ShoppingList.ViewModels
                      IsBought = false,
                      CategoryId = categoryId
                 };
-
+ 
                 ProductViewModel pvm = new ProductViewModel(newP);
-                 pvm.OnDelete += (s, e) => cat.Products.Remove(pvm);
+                 pvm.OnDelete += (s, e) =>
+                 {
+                    cat.Products.Remove(pvm);
+                    _ = SaveAsync();
+                 };
                  pvm.OnBoughtChanged += (s, e) => cat.MoveBoughtToEnd(pvm);
                  cat.Products.Add(pvm);
              }
+            _ = SaveAsync();
         }
  
         private void ApplyShopFilter()

@@ -5,6 +5,7 @@ using System.Windows.Input;
 using ShoppingList.Models;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
+using System.Threading.Tasks;
 
 namespace ShoppingList.ViewModels
 {
@@ -16,6 +17,7 @@ namespace ShoppingList.ViewModels
         public string Name { get => _model.Name; set { _model.Name = value; OnPropertyChanged(); } }
         public ObservableCollection<ProductViewModel> Products { get; } = new ObservableCollection<ProductViewModel>();
         public ObservableCollection<ProductViewModel> FilteredProducts { get; } = new ObservableCollection<ProductViewModel>();
+        private readonly Func<Task>? _saveCallback;
         private bool _hasFilterMatch = true;
         public bool HasFilterMatch { get => _hasFilterMatch; set => SetProperty(ref _hasFilterMatch, value); }
         private string _lastFilter = string.Empty;
@@ -36,9 +38,10 @@ namespace ShoppingList.ViewModels
         // komenda do zwijania/rozwijania kategorii
         public ICommand ToggleExpandCommand { get; }
 
-        public CategoryViewModel(Category c)
+        public CategoryViewModel(Category c, Func<Task>? saveCallback = null)
         {
             _model = c;
+            _saveCallback = saveCallback;
 
             Products.CollectionChanged += (s, e) => ReapplyFilter();
 
@@ -50,13 +53,18 @@ namespace ShoppingList.ViewModels
 
                 Product p = new Product { Name = name, Unit = unit, Quantity = qty, CategoryId = Id };
                 ProductViewModel vm = new ProductViewModel(p);
-                vm.OnDelete += (s, e) => Products.Remove(vm);
+                vm.OnDelete += (s, e) =>
+                {
+                    Products.Remove(vm);
+                    RequestSave();
+                };
                 vm.OnBoughtChanged += (s, e) => MoveBoughtToEnd(vm);
                 Products.Add(vm);
 
-                NewProductName = "";
+                NewProductName = string.Empty;
                 NewProductUnit = "szt.";
                 NewProductQuantity = 1;
+                RequestSave();
             });
 
             ToggleExpandCommand = new Command(() =>
@@ -65,6 +73,14 @@ namespace ShoppingList.ViewModels
             });
 
             ResetFilter();
+        }
+
+        private void RequestSave()
+        {
+            if (_saveCallback != null)
+            {
+                _ = _saveCallback();
+            }
         }
 
         public void ApplyFilter(string? filterText)

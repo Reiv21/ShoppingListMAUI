@@ -28,15 +28,32 @@ namespace ShoppingList.Services
                 string json = await File.ReadAllTextAsync(dataFile);
                 return JsonSerializer.Deserialize<AppData>(json) ?? CreateDefaultData();
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[DataService] Load failed: {ex.Message}");
                 return CreateDefaultData();
             }
         }
 
         public async Task SaveAsync(AppData data)
         {
+            string directory = Path.GetDirectoryName(dataFile) ?? FileSystem.AppDataDirectory;
+            Directory.CreateDirectory(directory);
             string json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
+            const int maxAttempts = 3;
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                try
+                {
+                    await File.WriteAllTextAsync(dataFile, json);
+                    return;
+                }
+                catch (IOException ex) when (attempt < maxAttempts)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[DataService] Save attempt {attempt} failed: {ex.Message}");
+                    await Task.Delay(200);
+                }
+            }
             await File.WriteAllTextAsync(dataFile, json);
         }
 
