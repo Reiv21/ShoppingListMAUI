@@ -158,12 +158,12 @@ namespace ShoppingList.ViewModels
                 {
                     bool isBought = vm.IsBought;
 
-                    // snapshot, żeby nie enumerować żywej kolekcji podczas modyfikacji
+                    // snapshot zeby nie uzywac zywej kolekcji podczas modyfikacji bo maui sie psulo
                     System.Collections.Generic.List<ProductViewModel> currentProducts = Products.ToList();
 
                     if (isBought)
                     {
-                        // przenieś na koniec, ale tylko jeśli nie jest już na końcu
+                        // przenies na koniec, ale tylko jesli nie jest już na koncu
                         int currentIndex = currentProducts.IndexOf(vm);
                         if (currentIndex >= 0 && currentIndex != currentProducts.Count - 1)
                         {

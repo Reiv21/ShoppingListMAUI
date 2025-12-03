@@ -12,14 +12,14 @@
   </ContentPage.ToolbarItems>
 
   <Grid Padding="10">
-    <!-- Główna zawartość strony -->
+    <!-- Glowna zawartość strony -->
     <Grid IsEnabled="{Binding IsInitialized}">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto" />
         <RowDefinition Height="*" />
       </Grid.RowDefinitions>
 
-      <!-- Panel filtrów i dodawania kategorii -->
+      <!-- Panel filtrow i dodawania kategori -->
       <StackLayout Orientation="Vertical" Spacing="8" Grid.Row="0">
         <StackLayout Orientation="Horizontal" Spacing="8">
           <Entry Text="{Binding ShopFilterText}" Placeholder="Filtruj po sklepie" HorizontalOptions="FillAndExpand"/>
@@ -38,7 +38,7 @@
         </StackLayout>
       </StackLayout>
 
-      <!-- Główny scroll: wszystkie kategorie + produkty w jednym ScrollView -->
+      <!-- scroll: wszystkie kategorie + produkty w ScrollView -->
       <ScrollView Grid.Row="1">
         <VerticalStackLayout Spacing="8"
                              BindableLayout.ItemsSource="{Binding Categories}">
@@ -84,13 +84,13 @@
             </DataTemplate>
           </BindableLayout.ItemTemplate>
 
-          <!-- dolny zapas, żeby można było przewinąć poniżej ostatniej kategorii -->
+          <!-- dolny zapas aby przewinac ponizej ostatniej kategori -->
           <BoxView HeightRequest="40" Opacity="0" />
         </VerticalStackLayout>
       </ScrollView>
     </Grid>
 
-    <!-- overlay ładowania -->
+    <!-- overlay ladowania -->
     <Grid BackgroundColor="Black" Opacity="0.1" IsVisible="{Binding IsInitializing}" InputTransparent="False" />
     <ActivityIndicator IsRunning="True" IsVisible="{Binding IsInitializing}" HorizontalOptions="Center" VerticalOptions="Center" />
   </Grid>

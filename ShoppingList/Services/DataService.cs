@@ -16,6 +16,8 @@ namespace ShoppingList.Services
         public List<Recipe> Recipes { get; set; } = new List<Recipe>();
     }
 
+    // zarzadza danymi np produktami, kategoriami
+    // ogarnia ladowanie i zapisywanie
     public class DataService
     {
         private readonly string dataFile = Path.Combine(FileSystem.AppDataDirectory, "shoppingdata.json");
@@ -81,7 +83,7 @@ namespace ShoppingList.Services
 
             // przykladowe produkty
             data.Products.Add(new Product { Name = "Mleko", Unit = "l", Quantity = 1, CategoryId = dairy.Id });
-            data.Products.Add(new Product { Name = "Jabłka", Unit = "kg", Quantity = 1.5, CategoryId = veg.Id });
+            data.Products.Add(new Product { Name = "Jablka", Unit = "kg", Quantity = 1.5, CategoryId = veg.Id });
 
             // dwa predefiniowane przepisy
             Recipe r1 = new Recipe { Title = "Sałatka owocowa", Description = "Prosty przepis" };
