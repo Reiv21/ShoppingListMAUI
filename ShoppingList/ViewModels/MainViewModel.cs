@@ -439,6 +439,7 @@ namespace ShoppingList.ViewModels
                         _ = SaveAsync();
                     };
                     pvm.OnBoughtChanged += (s, e) => cvm.MoveBoughtToEnd(pvm);
+                    pvm.OnChanged += (s, e) => _ = SaveAsync();
                     cvm.Products.Add(pvm);
                 }
                 Categories.Add(cvm);

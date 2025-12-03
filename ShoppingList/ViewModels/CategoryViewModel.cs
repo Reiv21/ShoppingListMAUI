@@ -63,6 +63,7 @@ namespace ShoppingList.ViewModels
                     RequestSave();
                 };
                 vm.OnBoughtChanged += (s, e) => MoveBoughtToEnd(vm);
+                vm.OnChanged += (s, e) => RequestSave();
                 Products.Add(vm);
 
                 NewProductName = string.Empty;
