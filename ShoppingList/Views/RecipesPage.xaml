@@ -12,7 +12,8 @@
       <VerticalStackLayout Spacing="6">
         <Label Text="Dodaj nowy przepis" FontAttributes="Bold" />
         <Entry Placeholder="Tytuł przepisu" Text="{Binding NewRecipeTitle}" />
-        <Entry Placeholder="Opis" Text="{Binding NewRecipeDescription}" />
+        <Entry Placeholder="Krótki opis" Text="{Binding NewRecipeDescription}" />
+        <Editor Placeholder="Instrukcje (wiele linii)" HeightRequest="120" Text="{Binding NewRecipeInstructions}" />
         <Button Text="Zapisz przepis" Command="{Binding AddRecipeCommand}" />
       </VerticalStackLayout>
     </Frame>
@@ -28,6 +29,7 @@
               <StackLayout Spacing="4">
                 <Label Text="{Binding Title}" FontAttributes="Bold" />
                 <Label Text="{Binding Description}" FontSize="12" TextColor="DimGray" />
+                <Label Text="{Binding Instructions}" FontSize="12" TextColor="DimGray" LineBreakMode="WordWrap" />
                 <StackLayout Orientation="Horizontal" Spacing="8">
                   <Button Text="Dodaj składniki do listy"
                           Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ImportRecipeCommand}"
@@ -60,12 +62,13 @@
                   </CollectionView>
                 </StackLayout>
 
-                <StackLayout Spacing="4">
+                <StackLayout Spacing="8">
                   <Label Text="Dodaj składnik" FontAttributes="Bold" />
                   <Entry Placeholder="Nazwa składnika" Text="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.NewIngredientName}" />
                   <Entry Placeholder="Ilość" Keyboard="Numeric" Text="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.NewIngredientQuantity}" />
                   <Entry Placeholder="Jednostka" Text="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.NewIngredientUnit}" />
                   <Entry Placeholder="Sklep" Text="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.NewIngredientStore}" />
+                  <Entry Placeholder="Kategoria" Text="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.NewIngredientCategoryName}" />
                   <StackLayout Orientation="Horizontal" Spacing="8">
                     <Label Text="Opcjonalny" VerticalOptions="Center" />
                     <Switch IsToggled="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.NewIngredientIsOptional}" />

@@ -21,19 +21,46 @@ namespace ShoppingList.Services
     public class DataService
     {
         private readonly string dataFile = Path.Combine(FileSystem.AppDataDirectory, "shoppingdata.json");
+        private const string DefaultDataAssetName = "defaultData.json";
 
         public async Task<AppData> LoadAsync()
         {
             try
             {
-                if (!File.Exists(dataFile)) return CreateDefaultData();
-                string json = await File.ReadAllTextAsync(dataFile);
-                return JsonSerializer.Deserialize<AppData>(json) ?? CreateDefaultData();
+                if (File.Exists(dataFile))
+                {
+                    string json = await File.ReadAllTextAsync(dataFile);
+                    AppData? loaded = JsonSerializer.Deserialize<AppData>(json);
+                    if (loaded != null)
+                    {
+                        return loaded;
+                    }
+                }
+
+                AppData? fromAsset = await LoadDefaultDataFromAssetAsync();
+                return fromAsset ?? CreateDefaultData();
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[DataService] Load failed: {ex.Message}");
-                return CreateDefaultData();
+                AppData? fromAsset = await LoadDefaultDataFromAssetAsync();
+                return fromAsset ?? CreateDefaultData();
+            }
+        }
+
+        private async Task<AppData?> LoadDefaultDataFromAssetAsync()
+        {
+            try
+            {
+                using Stream stream = await FileSystem.OpenAppPackageFileAsync(DefaultDataAssetName);
+                using StreamReader reader = new StreamReader(stream);
+                string json = await reader.ReadToEndAsync();
+                return JsonSerializer.Deserialize<AppData>(json);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DataService] Loading default asset failed: {ex.Message}");
+                return null;
             }
         }
 

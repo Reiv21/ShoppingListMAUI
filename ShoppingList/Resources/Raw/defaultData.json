@@ -1,0 +1,36 @@
+{
+  "Categories": [
+    { "Id": "00000000-0000-0000-0000-000000000001", "Name": "Nabiał", "Order": 0 },
+    { "Id": "00000000-0000-0000-0000-000000000002", "Name": "Warzywa", "Order": 1 },
+    { "Id": "00000000-0000-0000-0000-000000000003", "Name": "Elektronika", "Order": 2 }
+  ],
+  "Products": [
+    { "Id": "00000000-0000-0000-0000-000000000011", "Name": "Mleko", "Unit": "l", "Quantity": 1, "IsBought": false, "IsOptional": false, "Store": "", "CategoryId": "00000000-0000-0000-0000-000000000001" },
+    { "Id": "00000000-0000-0000-0000-000000000012", "Name": "Jablka", "Unit": "kg", "Quantity": 1.5, "IsBought": false, "IsOptional": false, "Store": "", "CategoryId": "00000000-0000-0000-0000-000000000002" }
+  ],
+  "Recipes": [
+    {
+      "Id": "00000000-0000-0000-0000-000000000021",
+      "Title": "Sałatka owocowa",
+      "Description": "Prosty przepis",
+      "Instructions": "Pokrój owoce, wymieszaj w misce, podaj schłodzone.",
+      "IsExpanded": false,
+      "Ingredients": [
+        { "Id": "00000000-0000-0000-0000-000000000031", "Name": "Jabłka", "Unit": "szt.", "Quantity": 3, "IsBought": false, "IsOptional": false, "Store": "", "CategoryId": "00000000-0000-0000-0000-000000000002" },
+        { "Id": "00000000-0000-0000-0000-000000000032", "Name": "Banany", "Unit": "szt.", "Quantity": 2, "IsBought": false, "IsOptional": false, "Store": "", "CategoryId": "00000000-0000-0000-0000-000000000002" }
+      ]
+    },
+    {
+      "Id": "00000000-0000-0000-0000-000000000022",
+      "Title": "Omlet",
+      "Description": "Szybki omlet",
+      "Instructions": "Rozbij jajka, dodaj mleko, usmaż na patelni.",
+      "IsExpanded": false,
+      "Ingredients": [
+        { "Id": "00000000-0000-0000-0000-000000000041", "Name": "Jajka", "Unit": "szt.", "Quantity": 3, "IsBought": false, "IsOptional": false, "Store": "", "CategoryId": "00000000-0000-0000-0000-000000000001" },
+        { "Id": "00000000-0000-0000-0000-000000000042", "Name": "Mleko", "Unit": "l", "Quantity": 0.1, "IsBought": false, "IsOptional": false, "Store": "", "CategoryId": "00000000-0000-0000-0000-000000000001" }
+      ]
+    }
+  ]
+}
+

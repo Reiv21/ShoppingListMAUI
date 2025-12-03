@@ -33,6 +33,18 @@ namespace ShoppingList.Models
             }
         }
 
+        private string _instructions = "";
+        public string Instructions
+        {
+            get => _instructions;
+            set
+            {
+                if (_instructions == value) return;
+                _instructions = value;
+                OnPropertyChanged();
+            }
+        }
+
         public ObservableCollection<Product> Ingredients { get; set; } = new ObservableCollection<Product>();
 
         private bool _isExpanded;

@@ -161,22 +161,32 @@ namespace ShoppingList.ViewModels
             set => SetProperty(ref _newIngredientIsOptional, value);
         }
 
-        public ICommand AddCategoryCommand { get; }
-        public ICommand SaveCommand { get; }
-        public ICommand ToggleShopViewCommand { get; }
-        public ICommand RefreshShopViewCommand { get; }
-        public ICommand ExportCommand { get; }
-        public ICommand ImportCommand { get; }
-        public ICommand SortByNameCommand { get; }
-        public ICommand SortByQuantityCommand { get; }
-        public ICommand SortByCategoryCommand { get; }
-        public ICommand AddRecipeCommand { get; }
-        public ICommand ImportRecipeCommand { get; }
-        public ICommand AddIngredientToRecipeCommand { get; }
-        public ICommand ToggleRecipeExpandCommand { get; }
-        public ICommand DeleteCategoryCommand { get; }
-        public ICommand DeleteRecipeCommand { get; }
-        public ICommand ClearShopFilterCommand { get; }
+        private string _newIngredientCategoryName = string.Empty;
+        public string NewIngredientCategoryName
+        {
+            get => _newIngredientCategoryName;
+            set => SetProperty(ref _newIngredientCategoryName, value);
+        }
+
+        private string _newRecipeInstructions = string.Empty;
+        public string NewRecipeInstructions { get => _newRecipeInstructions; set => SetProperty(ref _newRecipeInstructions, value); }
+
+        public ICommand AddCategoryCommand { get; private set; }
+        public ICommand SaveCommand { get; private set; }
+        public ICommand ToggleShopViewCommand { get; private set; }
+        public ICommand RefreshShopViewCommand { get; private set; }
+        public ICommand ExportCommand { get; private set; }
+        public ICommand ImportCommand { get; private set; }
+        public ICommand SortByNameCommand { get; private set; }
+        public ICommand SortByQuantityCommand { get; private set; }
+        public ICommand SortByCategoryCommand { get; private set; }
+        public ICommand AddRecipeCommand { get; private set; }
+        public ICommand ImportRecipeCommand { get; private set; }
+        public ICommand AddIngredientToRecipeCommand { get; private set; }
+        public ICommand ToggleRecipeExpandCommand { get; private set; }
+        public ICommand DeleteCategoryCommand { get; private set; }
+        public ICommand DeleteRecipeCommand { get; private set; }
+        public ICommand ClearShopFilterCommand { get; private set; }
 
         private readonly Dictionary<CategoryViewModel, NotifyCollectionChangedEventHandler> _categoryProductsHandlers = new Dictionary<CategoryViewModel, NotifyCollectionChangedEventHandler>();
         private bool _refreshScheduled;
@@ -185,112 +195,46 @@ namespace ShoppingList.ViewModels
         {
             Categories.CollectionChanged += Categories_CollectionChanged;
 
-            ShopSortOptions = new[]
+            ShopSortOptions = CreateShopSortOptions();
+            _selectedShopSortOption = ShopSortOptions[0];
+
+            InitializeCommands();
+        }
+
+        private IReadOnlyList<ShopSortOptionEntry> CreateShopSortOptions()
+        {
+            return new[]
             {
                 new ShopSortOptionEntry(ShopSortOption.Category, "Kategoria"),
                 new ShopSortOptionEntry(ShopSortOption.Name, "Nazwa"),
                 new ShopSortOptionEntry(ShopSortOption.Quantity, "Ilość")
             };
-            _selectedShopSortOption = ShopSortOptions[0];
+        }
 
-            AddCategoryCommand = new Command<string>(name =>
-            {
-                Category category = new Category { Name = string.IsNullOrWhiteSpace(name) ? "Nowa kategoria" : name, Order = Categories.Count };
-                CategoryViewModel categoryVm = new CategoryViewModel(category, SaveAsync);
-                AttachCategoryHandlers(categoryVm);
-                Categories.Add(categoryVm);
-            });
+        private void InitializeCommands()
+        {
+            InitializeCategoryCommands();
+            InitializeShopViewCommands();
+            InitializePersistenceCommands();
+            InitializeRecipeCommands();
+        }
 
-            SaveCommand = new Command(async () => await SaveAsync());
+        private void InitializeCategoryCommands()
+        {
+            AddCategoryCommand = new Command<string>(OnAddCategory);
+            DeleteCategoryCommand = new Command<CategoryViewModel>(async c => await DeleteCategoryAsync(c));
+            ClearShopFilterCommand = new Command(() => ShopFilterText = string.Empty);
+        }
 
+        private void InitializeShopViewCommands()
+        {
             ToggleShopViewCommand = new Command(() =>
             {
                 IsShopView = !IsShopView;
                 QueueRefreshShopView();
             });
 
-            ClearShopFilterCommand = new Command(() => ShopFilterText = string.Empty);
-
             RefreshShopViewCommand = new Command(() => QueueRefreshShopView());
-
-            ExportCommand = new Command(async () =>
-            {
-                try
-                {
-                    AppData data = BuildAppDataFromVm();
-                    string json = System.Text.Json.JsonSerializer.Serialize(data, new System.Text.Json.JsonSerializerOptions
-                    {
-                        WriteIndented = true
-                    });
-
-                    string fileName = $"lista_zakupow_{DateTime.Now:yyyyMMdd_HHmmss}.json";
-                    using MemoryStream stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
-
-                    FileSaverResult result = await FileSaver.Default.SaveAsync(fileName, stream, default);
-
-                    if (result.IsSuccessful)
-                    {
-                        await Application.Current.MainPage.DisplayAlert("Eksport", $"Zapisano plik: {result.FilePath}", "OK");
-                    }
-                    else if (result.Exception is not null)
-                    {
-                        await Application.Current.MainPage.DisplayAlert("Eksport", $"Błąd zapisu: {result.Exception.Message}", "OK");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    await Application.Current.MainPage.DisplayAlert("Eksport", $"Błąd: {ex.Message}", "OK");
-                }
-            });
-
-            ImportCommand = new Command(async () =>
-            {
-                try
-                {
-                    FilePickerFileType customTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
-                    {
-                        { DevicePlatform.WinUI, new[] { "*.json" } },
-                        { DevicePlatform.Android, new[] { "application/json" } },
-                        { DevicePlatform.iOS, new[] { "public.json" } },
-                        { DevicePlatform.MacCatalyst, new[] { "public.json" } }
-                    });
-
-                    FileResult? pickResult = await FilePicker.PickAsync(new PickOptions
-                    {
-                        PickerTitle = "Wybierz plik listy zakupów",
-                        FileTypes = customTypes
-                    });
-
-                    if (pickResult == null) return;
-
-                    ImportMode? mode = await PromptImportModeAsync();
-                    if (mode == null) return;
-
-                    using Stream stream = await pickResult.OpenReadAsync();
-                    using StreamReader reader = new StreamReader(stream);
-                    string json = await reader.ReadToEndAsync();
-
-                    AppData imported = System.Text.Json.JsonSerializer.Deserialize<AppData>(json) ?? new AppData();
-                    AppData current = BuildAppDataFromVm();
-                    AppData merged = _dataService.Merge(current, imported, mode.Value);
-
-                    await LoadFromDataAsync(merged);
-                    await SaveAsync();
-
-                    string confirmation = mode == ImportMode.Replace
-                        ? "Bieżące dane zostały nadpisane danymi z pliku."
-                        : "Elementy z pliku zostały dodane do istniejącej listy.";
-
-                    if (Application.Current?.MainPage != null)
-                    {
-                        await Application.Current.MainPage.DisplayAlert("Import", confirmation, "OK");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    await Application.Current.MainPage.DisplayAlert("Import", $"Błąd importu: {ex.Message}", "OK");
-                }
-            });
 
             SortByNameCommand = new Command(() =>
             {
@@ -311,88 +255,288 @@ namespace ShoppingList.ViewModels
                 foreach (CategoryViewModel c in ordered) Categories.Add(c);
                 QueueRefreshShopView();
             });
+        }
 
-            AddRecipeCommand = new Command(async () =>
+        private void InitializePersistenceCommands()
+        {
+            SaveCommand = new Command(async () => await SaveAsync());
+            ExportCommand = new Command(async () => await ExportAsync());
+            ImportCommand = new Command(async () => await ImportAsync());
+        }
+
+        private void InitializeRecipeCommands()
+        {
+            AddRecipeCommand = new Command(async () => await AddRecipeAsync());
+            ImportRecipeCommand = new Command<Recipe>(async r => await ImportRecipeAsync(r));
+            AddIngredientToRecipeCommand = new Command<Recipe>(async r => await AddIngredientToRecipeAsync(r));
+            DeleteRecipeCommand = new Command<Recipe>(async r => await DeleteRecipeAsync(r));
+            ToggleRecipeExpandCommand = new Command<Recipe>(r =>
             {
-                if (string.IsNullOrWhiteSpace(NewRecipeTitle)) return;
+                if (r == null) return;
+                r.IsExpanded = !r.IsExpanded;
+            });
+        }
 
-                Recipe recipe = new Recipe
+        private void OnAddCategory(string name)
+        {
+            Category category = new Category { Name = string.IsNullOrWhiteSpace(name) ? "Nowa kategoria" : name, Order = Categories.Count };
+            CategoryViewModel categoryVm = new CategoryViewModel(category, SaveAsync);
+            AttachCategoryHandlers(categoryVm);
+            Categories.Add(categoryVm);
+        }
+
+        private async Task DeleteCategoryAsync(CategoryViewModel categoryVm)
+        {
+            if (categoryVm == null) return;
+            DetachCategoryHandlers(categoryVm);
+            Categories.Remove(categoryVm);
+            await SaveAsync();
+            QueueRefreshShopView();
+        }
+
+        private async Task ExportAsync()
+        {
+            try
+            {
+                AppData data = BuildAppDataFromVm();
+                string json = System.Text.Json.JsonSerializer.Serialize(data, new System.Text.Json.JsonSerializerOptions
                 {
-                    Title = NewRecipeTitle.Trim(),
-                    Description = NewRecipeDescription?.Trim() ?? string.Empty
-                };
+                    WriteIndented = true
+                });
 
-                Recipes.Add(recipe);
-                NewRecipeTitle = string.Empty;
-                NewRecipeDescription = string.Empty;
+                string fileName = $"lista_zakupow_{DateTime.Now:yyyyMMdd_HHmmss}.json";
+                using MemoryStream stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
 
-                await SaveAsync();
-            });
+                FileSaverResult result = await FileSaver.Default.SaveAsync(fileName, stream, default);
 
-            ImportRecipeCommand = new Command<Recipe>(async recipe =>
-            {
-                if (recipe == null) return;
-
-                CategoryViewModel? category = GetOrCreateCategoryForRecipe(recipe.Title);
-                if (category == null) return;
-
-                AddRecipeIngredientsToCategory(recipe, category.Id);
-                await SaveAsync();
-                QueueRefreshShopView();
-            });
-
-            AddIngredientToRecipeCommand = new Command<Recipe>(async recipe =>
-            {
-                Recipe? target = recipe ?? SelectedRecipe;
-                if (target == null) return;
-
-                string name = string.IsNullOrWhiteSpace(NewIngredientName) ? "Nowy składnik" : NewIngredientName.Trim();
-                string unit = string.IsNullOrWhiteSpace(NewIngredientUnit) ? "szt." : NewIngredientUnit.Trim();
-                double quantity = NewIngredientQuantity <= 0 ? 1 : NewIngredientQuantity;
-
-                Product ingredient = new Product
+                if (result.IsSuccessful)
                 {
-                    Name = name,
-                    Unit = unit,
-                    Quantity = quantity,
-                    Store = NewIngredientStore?.Trim() ?? string.Empty,
-                    IsOptional = NewIngredientIsOptional
-                };
-
-                target.Ingredients.Add(ingredient);
-
-                NewIngredientName = string.Empty;
-                NewIngredientUnit = "szt.";
-                NewIngredientQuantity = 1;
-                NewIngredientStore = string.Empty;
-                NewIngredientIsOptional = false;
-
-                OnPropertyChanged(nameof(Recipes));
-
-                await SaveAsync();
-            });
-
-            DeleteCategoryCommand = new Command<CategoryViewModel>(async categoryVm =>
+                    await Application.Current.MainPage.DisplayAlert("Eksport", $"Zapisano plik: {result.FilePath}", "OK");
+                }
+                else if (result.Exception is not null)
+                {
+                    await Application.Current.MainPage.DisplayAlert("Eksport", $"Błąd zapisu: {result.Exception.Message}", "OK");
+                }
+            }
+            catch (Exception ex)
             {
-                if (categoryVm == null) return;
-                DetachCategoryHandlers(categoryVm);
-                Categories.Remove(categoryVm);
-                await SaveAsync();
-                QueueRefreshShopView();
-            });
+                await Application.Current.MainPage.DisplayAlert("Eksport", $"Błąd: {ex.Message}", "OK");
+            }
+        }
 
-            DeleteRecipeCommand = new Command<Recipe>(async recipe =>
+        private async Task ImportAsync()
+        {
+            try
             {
-                if (recipe == null) return;
-                Recipes.Remove(recipe);
-                await SaveAsync();
-            });
+                FilePickerFileType customTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
+                {
+                    { DevicePlatform.WinUI, new[] { "*.json" } },
+                    { DevicePlatform.Android, new[] { "application/json" } },
+                    { DevicePlatform.iOS, new[] { "public.json" } },
+                    { DevicePlatform.MacCatalyst, new[] { "public.json" } }
+                });
 
-            ToggleRecipeExpandCommand = new Command<Recipe>(recipe =>
+                FileResult? pickResult = await FilePicker.PickAsync(new PickOptions
+                {
+                    PickerTitle = "Wybierz plik listy zakupów",
+                    FileTypes = customTypes
+                });
+
+                if (pickResult == null) return;
+
+                ImportMode? mode = await PromptImportModeAsync();
+                if (mode == null) return;
+
+                using Stream stream = await pickResult.OpenReadAsync();
+                using StreamReader reader = new StreamReader(stream);
+                string json = await reader.ReadToEndAsync();
+
+                AppData imported = System.Text.Json.JsonSerializer.Deserialize<AppData>(json) ?? new AppData();
+                AppData current = BuildAppDataFromVm();
+                AppData merged = _dataService.Merge(current, imported, mode.Value);
+
+                await LoadFromDataAsync(merged);
+                await SaveAsync();
+
+                string confirmation = mode == ImportMode.Replace
+                    ? "Bieżące dane zostały nadpisane danymi z pliku."
+                    : "Elementy z pliku zostały dodane do istniejącej listy.";
+
+                if (Application.Current?.MainPage != null)
+                {
+                    await Application.Current.MainPage.DisplayAlert("Import", confirmation, "OK");
+                }
+            }
+            catch (Exception ex)
             {
-                if (recipe == null) return;
-                recipe.IsExpanded = !recipe.IsExpanded;
-            });
+                await Application.Current.MainPage.DisplayAlert("Import", $"Błąd importu: {ex.Message}", "OK");
+            }
+        }
+
+        private async Task AddRecipeAsync()
+        {
+            if (string.IsNullOrWhiteSpace(NewRecipeTitle)) return;
+
+            Recipe recipe = new Recipe
+            {
+                Title = NewRecipeTitle.Trim(),
+                Description = NewRecipeDescription?.Trim() ?? string.Empty,
+                Instructions = NewRecipeInstructions?.Trim() ?? string.Empty
+            };
+
+            Recipes.Add(recipe);
+            NewRecipeTitle = string.Empty;
+            NewRecipeDescription = string.Empty;
+            NewRecipeInstructions = string.Empty;
+
+            await SaveAsync();
+        }
+
+        private async Task ImportRecipeAsync(Recipe recipe)
+        {
+            if (recipe == null) return;
+            AddRecipeIngredients(recipe);
+            await SaveAsync();
+            QueueRefreshShopView();
+        }
+
+        private async Task AddIngredientToRecipeAsync(Recipe recipe)
+        {
+            Recipe? target = recipe ?? SelectedRecipe;
+            if (target == null) return;
+
+            string name = string.IsNullOrWhiteSpace(NewIngredientName) ? "Nowy składnik" : NewIngredientName.Trim();
+            string unit = string.IsNullOrWhiteSpace(NewIngredientUnit) ? "szt." : NewIngredientUnit.Trim();
+            double quantity = NewIngredientQuantity <= 0 ? 1 : NewIngredientQuantity;
+
+            Guid categoryId = Guid.Empty;
+            if (!string.IsNullOrWhiteSpace(NewIngredientCategoryName))
+            {
+                // spróbuj znaleźć istniejącą kategorię o tej nazwie
+                CategoryViewModel? existingCat = Categories.FirstOrDefault(c => string.Equals(c.Name, NewIngredientCategoryName.Trim(), StringComparison.OrdinalIgnoreCase));
+                if (existingCat != null)
+                {
+                    categoryId = existingCat.Id;
+                }
+            }
+
+            Product ingredient = new Product
+            {
+                Name = name,
+                Unit = unit,
+                Quantity = quantity,
+                Store = NewIngredientStore?.Trim() ?? string.Empty,
+                IsOptional = NewIngredientIsOptional,
+                CategoryId = categoryId
+            };
+
+            target.Ingredients.Add(ingredient);
+
+            NewIngredientName = string.Empty;
+            NewIngredientUnit = "szt.";
+            NewIngredientQuantity = 1;
+            NewIngredientStore = string.Empty;
+            NewIngredientIsOptional = false;
+            NewIngredientCategoryName = string.Empty;
+
+            OnPropertyChanged(nameof(Recipes));
+
+            await SaveAsync();
+        }
+
+        private async Task DeleteRecipeAsync(Recipe recipe)
+        {
+            if (recipe == null) return;
+            Recipes.Remove(recipe);
+            await SaveAsync();
+        }
+
+        public void AddRecipeIngredients(Recipe recipe)
+        {
+            foreach (Product ing in recipe.Ingredients)
+            {
+                CategoryViewModel categoryVm = GetOrCreateCategoryForIngredient(ing);
+
+                // szukamy istniejącego produktu o tej samej nazwie i jednostce w tej kategorii
+                ProductViewModel? existing = categoryVm.Products
+                    .FirstOrDefault(p => string.Equals(p.Name?.Trim(), ing.Name?.Trim(), StringComparison.OrdinalIgnoreCase)
+                                         && string.Equals(p.Unit?.Trim(), ing.Unit?.Trim(), StringComparison.OrdinalIgnoreCase));
+
+                if (existing != null)
+                {
+                    // jeśli istnieje, zwiększamy ilość
+                    double newQty = existing.Quantity + ing.Quantity;
+                    existing.Quantity = newQty;
+                    existing.IsOptional = existing.IsOptional || ing.IsOptional;
+                    if (string.IsNullOrWhiteSpace(existing.Store) && !string.IsNullOrWhiteSpace(ing.Store))
+                    {
+                        existing.Store = ing.Store;
+                    }
+                }
+                else
+                {
+                    // w przeciwnym razie tworzymy nowy produkt w tej kategorii
+                    Product newP = new Product
+                    {
+                        Name = ing.Name,
+                        Unit = ing.Unit,
+                        Quantity = ing.Quantity,
+                        Store = ing.Store,
+                        IsOptional = ing.IsOptional,
+                        IsBought = false,
+                        CategoryId = categoryVm.Id
+                    };
+
+                    ProductViewModel pvm = new ProductViewModel(newP);
+                    pvm.OnDelete += (s, e) =>
+                    {
+                        categoryVm.Products.Remove(pvm);
+                        _ = SaveAsync();
+                    };
+                    pvm.OnBoughtChanged += (s, e) => categoryVm.MoveBoughtToEnd(pvm);
+                    pvm.OnChanged += (s, e) => _ = SaveAsync();
+                    categoryVm.Products.Add(pvm);
+                }
+            }
+        }
+
+        private CategoryViewModel GetOrCreateCategoryForIngredient(Product ingredient)
+        {
+            if (ingredient.CategoryId != Guid.Empty)
+            {
+                CategoryViewModel? existingById = Categories.FirstOrDefault(c => c.Id == ingredient.CategoryId);
+                if (existingById != null)
+                {
+                    return existingById;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(ingredient.Name))
+            {
+                string name = ingredient.Name.Trim();
+                string lower = name.ToLowerInvariant();
+
+                if (lower.Contains("mleko") || lower.Contains("jaj") || lower.Contains("ser"))
+                {
+                    CategoryViewModel? dairy = Categories.FirstOrDefault(c => string.Equals(c.Name, "Nabiał", StringComparison.OrdinalIgnoreCase));
+                    if (dairy != null) return dairy;
+                }
+
+                if (lower.Contains("jabł") || lower.Contains("jabl") || lower.Contains("banan") || lower.Contains("pomidor") || lower.Contains("ogórek") || lower.Contains("ogor"))
+                {
+                    CategoryViewModel? veg = Categories.FirstOrDefault(c => string.Equals(c.Name, "Warzywa", StringComparison.OrdinalIgnoreCase));
+                    if (veg != null) return veg;
+                }
+            }
+
+            CategoryViewModel? other = Categories.FirstOrDefault(c => string.Equals(c.Name, "Inne", StringComparison.OrdinalIgnoreCase));
+            if (other != null) return other;
+
+            Category otherModel = new Category { Name = "Inne", Order = Categories.Count };
+            CategoryViewModel otherVm = new CategoryViewModel(otherModel, SaveAsync);
+            AttachCategoryHandlers(otherVm);
+            Categories.Add(otherVm);
+            return otherVm;
         }
 
         public async Task InitializeAsync()
@@ -716,36 +860,6 @@ namespace ShoppingList.ViewModels
             AttachCategoryHandlers(newVm);
             Categories.Add(newVm);
             return newVm;
-        }
-
-        public void AddRecipeIngredientsToCategory(Recipe recipe, Guid categoryId)
-        {
-            CategoryViewModel? cat = Categories.FirstOrDefault(c => c.Id == categoryId);
-            if (cat == null) return;
-
-            foreach (Product ing in recipe.Ingredients)
-            {
-                Product newP = new Product
-                {
-                    Name = ing.Name,
-                    Unit = ing.Unit,
-                    Quantity = ing.Quantity,
-                    Store = ing.Store,
-                    IsOptional = ing.IsOptional,
-                    IsBought = false,
-                    CategoryId = categoryId
-                };
-
-                ProductViewModel pvm = new ProductViewModel(newP);
-                pvm.OnDelete += (s, e) =>
-                {
-                    cat.Products.Remove(pvm);
-                    _ = SaveAsync();
-                };
-                pvm.OnBoughtChanged += (s, e) => cat.MoveBoughtToEnd(pvm);
-                cat.Products.Add(pvm);
-            }
-            _ = SaveAsync();
         }
 
         private void ApplyShopFilter()

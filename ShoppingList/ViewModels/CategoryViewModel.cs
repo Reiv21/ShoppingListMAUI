@@ -109,13 +109,13 @@ namespace ShoppingList.ViewModels
             }
 
             _lastFilter = term;
-            term = term.Trim().ToLowerInvariant();
+            term = term.Trim();
             System.Collections.Generic.List<ProductViewModel> matches;
             lock (Products)
             {
                 matches = Products
                     .Where(p => !string.IsNullOrWhiteSpace(p.Store) &&
-                                p.Store.ToLowerInvariant().Contains(term))
+                                string.Equals(p.Store.Trim(), term, StringComparison.OrdinalIgnoreCase))
                     .ToList();
             }
 

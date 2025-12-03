@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:controls="clr-namespace:ShoppingList.Views.Controls"
+    x:Class="ShoppingList.Views.Controls.CategoryView">
+
+  <Frame Padding="8" Margin="6" HasShadow="True" IsVisible="{Binding HasFilterMatch}">
+    <Grid RowDefinitions="Auto,Auto">
+      <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto">
+        <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="16" Grid.Column="0" VerticalOptions="Center"/>
+        <Button Grid.Column="1" Command="{Binding ToggleExpandCommand}" Text="Rozwiń" VerticalOptions="Center">
+          <Button.Triggers>
+            <DataTrigger TargetType="Button" Binding="{Binding IsExpanded}" Value="True">
+              <Setter Property="Text" Value="Zwiń" />
+            </DataTrigger>
+          </Button.Triggers>
+        </Button>
+        <Button Grid.Column="2"
+                Text="Usuń"
+                TextColor="Red"
+                Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.DeleteCategoryCommand}"
+                CommandParameter="{Binding .}" />
+      </Grid>
+
+      <StackLayout Grid.Row="1" IsVisible="{Binding IsExpanded}">
+        <StackLayout Orientation="Horizontal" Spacing="6" Margin="0,6,0,6">
+          <Entry Placeholder="Nazwa produktu" Text="{Binding NewProductName}" HorizontalOptions="FillAndExpand"/>
+          <Entry Placeholder="Jednostka" WidthRequest="80" Text="{Binding NewProductUnit}" />
+          <Entry Placeholder="Ilość" WidthRequest="70" Keyboard="Numeric" Text="{Binding NewProductQuantity}" />
+          <Button Text="+ Dodaj" Command="{Binding AddProductCommand}" />
+        </StackLayout>
+
+        <VerticalStackLayout BindableLayout.ItemsSource="{Binding FilteredProducts}" Spacing="4">
+          <BindableLayout.ItemTemplate>
+            <DataTemplate>
+              <controls:ProductView />
+            </DataTemplate>
+          </BindableLayout.ItemTemplate>
+        </VerticalStackLayout>
+      </StackLayout>
+    </Grid>
+  </Frame>
+</ContentView>
+

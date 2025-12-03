@@ -12,14 +12,12 @@
   </ContentPage.ToolbarItems>
 
   <Grid Padding="10">
-    <!-- Glowna zawartość strony -->
     <Grid IsEnabled="{Binding IsInitialized}">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto" />
         <RowDefinition Height="*" />
       </Grid.RowDefinitions>
 
-      <!-- Panel filtrow i dodawania kategori -->
       <StackLayout Orientation="Vertical" Spacing="8" Grid.Row="0">
         <StackLayout Orientation="Horizontal" Spacing="8">
           <Entry Text="{Binding ShopFilterText}" Placeholder="Filtruj po sklepie" HorizontalOptions="FillAndExpand"/>
@@ -38,59 +36,20 @@
         </StackLayout>
       </StackLayout>
 
-      <!-- scroll: wszystkie kategorie + produkty w ScrollView -->
       <ScrollView Grid.Row="1">
         <VerticalStackLayout Spacing="8"
                              BindableLayout.ItemsSource="{Binding Categories}">
           <BindableLayout.ItemTemplate>
             <DataTemplate>
-              <Frame Padding="8" Margin="6" HasShadow="True" IsVisible="{Binding HasFilterMatch}">
-                <Grid RowDefinitions="Auto,Auto">
-                  <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto">
-                    <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="16" Grid.Column="0" VerticalOptions="Center"/>
-                    <Button Grid.Column="1" Command="{Binding ToggleExpandCommand}" Text="Rozwiń" VerticalOptions="Center">
-                      <Button.Triggers>
-                        <DataTrigger TargetType="Button" Binding="{Binding IsExpanded}" Value="True">
-                          <Setter Property="Text" Value="Zwiń" />
-                        </DataTrigger>
-                      </Button.Triggers>
-                    </Button>
-                    <Button Grid.Column="2"
-                            Text="Usuń"
-                            TextColor="Red"
-                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.DeleteCategoryCommand}"
-                            CommandParameter="{Binding .}" />
-                  </Grid>
-
-                  <!-- pola dodawania produktu i lista produktow widocna tylko gdy IsExpanded == true -->
-                  <StackLayout Grid.Row="1" IsVisible="{Binding IsExpanded}">
-                    <StackLayout Orientation="Horizontal" Spacing="6" Margin="0,6,0,6">
-                      <Entry Placeholder="Nazwa produktu" Text="{Binding NewProductName}" HorizontalOptions="FillAndExpand"/>
-                      <Entry Placeholder="Jednostka" WidthRequest="80" Text="{Binding NewProductUnit}" />
-                      <Entry Placeholder="Ilość" WidthRequest="70" Keyboard="Numeric" Text="{Binding NewProductQuantity}" />
-                      <Button Text="+ Dodaj" Command="{Binding AddProductCommand}" />
-                    </StackLayout>
-
-                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding FilteredProducts}" Spacing="4">
-                      <BindableLayout.ItemTemplate>
-                        <DataTemplate>
-                          <controls:ProductView />
-                        </DataTemplate>
-                      </BindableLayout.ItemTemplate>
-                    </VerticalStackLayout>
-                  </StackLayout>
-                </Grid>
-              </Frame>
+              <controls:CategoryView />
             </DataTemplate>
           </BindableLayout.ItemTemplate>
 
-          <!-- dolny zapas aby przewinac ponizej ostatniej kategori -->
           <BoxView HeightRequest="40" Opacity="0" />
         </VerticalStackLayout>
       </ScrollView>
     </Grid>
 
-    <!-- overlay ladowania -->
     <Grid BackgroundColor="Black" Opacity="0.1" IsVisible="{Binding IsInitializing}" InputTransparent="False" />
     <ActivityIndicator IsRunning="True" IsVisible="{Binding IsInitializing}" HorizontalOptions="Center" VerticalOptions="Center" />
   </Grid>
