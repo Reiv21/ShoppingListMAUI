@@ -56,6 +56,8 @@ namespace ShoppingList.ViewModels
                     {
                         ApplyShopFilter();
                     }
+
+                    QueueRefreshShopView();
                 }
             }
         }
@@ -171,22 +173,47 @@ namespace ShoppingList.ViewModels
         private string _newRecipeInstructions = string.Empty;
         public string NewRecipeInstructions { get => _newRecipeInstructions; set => SetProperty(ref _newRecipeInstructions, value); }
 
-        public ICommand AddCategoryCommand { get; private set; }
-        public ICommand SaveCommand { get; private set; }
-        public ICommand ToggleShopViewCommand { get; private set; }
-        public ICommand RefreshShopViewCommand { get; private set; }
-        public ICommand ExportCommand { get; private set; }
-        public ICommand ImportCommand { get; private set; }
-        public ICommand SortByNameCommand { get; private set; }
-        public ICommand SortByQuantityCommand { get; private set; }
-        public ICommand SortByCategoryCommand { get; private set; }
-        public ICommand AddRecipeCommand { get; private set; }
-        public ICommand ImportRecipeCommand { get; private set; }
-        public ICommand AddIngredientToRecipeCommand { get; private set; }
-        public ICommand ToggleRecipeExpandCommand { get; private set; }
-        public ICommand DeleteCategoryCommand { get; private set; }
-        public ICommand DeleteRecipeCommand { get; private set; }
-        public ICommand ClearShopFilterCommand { get; private set; }
+        // Picker dla kategorii przy dodawaniu składnika do przepisu
+        private CategoryViewModel? _newIngredientSelectedCategory;
+        public CategoryViewModel? NewIngredientSelectedCategory
+        {
+            get => _newIngredientSelectedCategory;
+            set => SetProperty(ref _newIngredientSelectedCategory, value);
+        }
+
+        // Lista dostępnych sklepów do filtrowania
+        public ObservableCollection<string> AvailableStores { get; } = new ObservableCollection<string>();
+
+        private string? _selectedStore;
+        public string? SelectedStore
+        {
+            get => _selectedStore;
+            set
+            {
+                if (SetProperty(ref _selectedStore, value))
+                {
+                    // synchronizuj z tekstowym filtrem i zastosuj
+                    ShopFilterText = value ?? string.Empty;
+                }
+            }
+        }
+
+        public ICommand? AddCategoryCommand { get; private set; }
+        public ICommand? SaveCommand { get; private set; }
+        public ICommand? ToggleShopViewCommand { get; private set; }
+        public ICommand? RefreshShopViewCommand { get; private set; }
+        public ICommand? ExportCommand { get; private set; }
+        public ICommand? ImportCommand { get; private set; }
+        public ICommand? SortByNameCommand { get; private set; }
+        public ICommand? SortByQuantityCommand { get; private set; }
+        public ICommand? SortByCategoryCommand { get; private set; }
+        public ICommand? AddRecipeCommand { get; private set; }
+        public ICommand? ImportRecipeCommand { get; private set; }
+        public ICommand? AddIngredientToRecipeCommand { get; private set; }
+        public ICommand? ToggleRecipeExpandCommand { get; private set; }
+        public ICommand? DeleteCategoryCommand { get; private set; }
+        public ICommand? DeleteRecipeCommand { get; private set; }
+        public ICommand? ClearShopFilterCommand { get; private set; }
 
         private readonly Dictionary<CategoryViewModel, NotifyCollectionChangedEventHandler> _categoryProductsHandlers = new Dictionary<CategoryViewModel, NotifyCollectionChangedEventHandler>();
         private bool _refreshScheduled;
@@ -223,7 +250,7 @@ namespace ShoppingList.ViewModels
         {
             AddCategoryCommand = new Command<string>(OnAddCategory);
             DeleteCategoryCommand = new Command<CategoryViewModel>(async c => await DeleteCategoryAsync(c));
-            ClearShopFilterCommand = new Command(() => ShopFilterText = string.Empty);
+            ClearShopFilterCommand = new Command(() => { ShopFilterText = string.Empty; SelectedStore = null; });
         }
 
         private void InitializeShopViewCommands()
@@ -409,8 +436,13 @@ namespace ShoppingList.ViewModels
             string unit = string.IsNullOrWhiteSpace(NewIngredientUnit) ? "szt." : NewIngredientUnit.Trim();
             double quantity = NewIngredientQuantity <= 0 ? 1 : NewIngredientQuantity;
 
+            // priorytet: wybrana kategoria z Picker, potem pole z nazwą, inaczej puste (Inne zostanie użyte przy dodawaniu)
             Guid categoryId = Guid.Empty;
-            if (!string.IsNullOrWhiteSpace(NewIngredientCategoryName))
+            if (NewIngredientSelectedCategory != null)
+            {
+                categoryId = NewIngredientSelectedCategory.Id;
+            }
+            else if (!string.IsNullOrWhiteSpace(NewIngredientCategoryName))
             {
                 // spróbuj znaleźć istniejącą kategorię o tej nazwie
                 CategoryViewModel? existingCat = Categories.FirstOrDefault(c => string.Equals(c.Name, NewIngredientCategoryName.Trim(), StringComparison.OrdinalIgnoreCase));
@@ -438,6 +470,7 @@ namespace ShoppingList.ViewModels
             NewIngredientStore = string.Empty;
             NewIngredientIsOptional = false;
             NewIngredientCategoryName = string.Empty;
+            NewIngredientSelectedCategory = null;
 
             OnPropertyChanged(nameof(Recipes));
 
@@ -457,16 +490,16 @@ namespace ShoppingList.ViewModels
             {
                 CategoryViewModel categoryVm = GetOrCreateCategoryForIngredient(ing);
 
-                // szukamy istniejącego produktu o tej samej nazwie i jednostce w tej kategorii
+                // szukamy istniejącego produktu o tej samej nazwie, jednostce i kategorii
                 ProductViewModel? existing = categoryVm.Products
                     .FirstOrDefault(p => string.Equals(p.Name?.Trim(), ing.Name?.Trim(), StringComparison.OrdinalIgnoreCase)
-                                         && string.Equals(p.Unit?.Trim(), ing.Unit?.Trim(), StringComparison.OrdinalIgnoreCase));
+                                         && string.Equals(p.Unit?.Trim(), ing.Unit?.Trim(), StringComparison.OrdinalIgnoreCase)
+                                         && p.Model.CategoryId == categoryVm.Id);
 
                 if (existing != null)
                 {
                     // jeśli istnieje, zwiększamy ilość
-                    double newQty = existing.Quantity + ing.Quantity;
-                    existing.Quantity = newQty;
+                    existing.Quantity += ing.Quantity;
                     existing.IsOptional = existing.IsOptional || ing.IsOptional;
                     if (string.IsNullOrWhiteSpace(existing.Store) && !string.IsNullOrWhiteSpace(ing.Store))
                     {
@@ -502,6 +535,7 @@ namespace ShoppingList.ViewModels
 
         private CategoryViewModel GetOrCreateCategoryForIngredient(Product ingredient)
         {
+            // Jeśli produkt ma już CategoryId, użyj tej kategorii (jeśli istnieje)
             if (ingredient.CategoryId != Guid.Empty)
             {
                 CategoryViewModel? existingById = Categories.FirstOrDefault(c => c.Id == ingredient.CategoryId);
@@ -511,24 +545,7 @@ namespace ShoppingList.ViewModels
                 }
             }
 
-            if (!string.IsNullOrWhiteSpace(ingredient.Name))
-            {
-                string name = ingredient.Name.Trim();
-                string lower = name.ToLowerInvariant();
-
-                if (lower.Contains("mleko") || lower.Contains("jaj") || lower.Contains("ser"))
-                {
-                    CategoryViewModel? dairy = Categories.FirstOrDefault(c => string.Equals(c.Name, "Nabiał", StringComparison.OrdinalIgnoreCase));
-                    if (dairy != null) return dairy;
-                }
-
-                if (lower.Contains("jabł") || lower.Contains("jabl") || lower.Contains("banan") || lower.Contains("pomidor") || lower.Contains("ogórek") || lower.Contains("ogor"))
-                {
-                    CategoryViewModel? veg = Categories.FirstOrDefault(c => string.Equals(c.Name, "Warzywa", StringComparison.OrdinalIgnoreCase));
-                    if (veg != null) return veg;
-                }
-            }
-
+            // Brak przypisanej kategorii — spróbuj znaleźć kategorię "Inne" lub utwórz ją
             CategoryViewModel? other = Categories.FirstOrDefault(c => string.Equals(c.Name, "Inne", StringComparison.OrdinalIgnoreCase));
             if (other != null) return other;
 
@@ -538,6 +555,28 @@ namespace ShoppingList.ViewModels
             Categories.Add(otherVm);
             return otherVm;
         }
+
+        // Odbuduj listę dostępnych sklepów do Picker'a
+        private void RebuildAvailableStores()
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                var stores = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (CategoryViewModel c in Categories)
+                {
+                    foreach (var p in c.Products)
+                    {
+                        if (!string.IsNullOrWhiteSpace(p.Store)) stores.Add(p.Store.Trim());
+                    }
+                }
+
+                AvailableStores.Clear();
+                foreach (var s in stores.OrderBy(x => x)) AvailableStores.Add(s);
+            });
+        }
+
+        // już nie utrzymujemy ręcznie pojedynczych wpisów, zawsze liczymy listę od zera w RebuildAvailableStores
+        private void AddStoreToAvailable(string? store) { /* pozostawione dla kompatybilności, nie robi nic */ }
 
         public async Task InitializeAsync()
         {
@@ -597,6 +636,7 @@ namespace ShoppingList.ViewModels
             AttachHandlersForAllCategories();
             QueueRefreshShopView();
             ApplyShopFilter();
+            RebuildAvailableStores();
         }
 
         private void AttachHandlersForAllCategories()
@@ -632,6 +672,8 @@ namespace ShoppingList.ViewModels
         {
             AppData data = BuildAppDataFromVm();
             await _dataService.SaveAsync(data);
+            // after saving, rebuild available stores so UI Picker reflects any newly added stores
+            RebuildAvailableStores();
         }
 
         private void Categories_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -660,20 +702,21 @@ namespace ShoppingList.ViewModels
             }
 
             NotifyCollectionChangedEventHandler handler = (s, e) =>
-            {
-                if (e.NewItems != null)
-                {
-                    foreach (ProductViewModel p in e.NewItems) AttachProductHandler(p);
-                }
+             {
+                 if (e.NewItems != null)
+                 {
+                     foreach (ProductViewModel p in e.NewItems) AttachProductHandler(p);
+                 }
 
-                if (e.OldItems != null)
-                {
-                    foreach (ProductViewModel p in e.OldItems) DetachProductHandler(p);
-                }
+                 if (e.OldItems != null)
+                 {
+                     foreach (ProductViewModel p in e.OldItems) DetachProductHandler(p);
+                 }
 
-                QueueRefreshShopView();
-                ApplyShopFilter();
-            };
+                 QueueRefreshShopView();
+                 ApplyShopFilter();
+                 RebuildAvailableStores();
+             };
 
             cvm.Products.CollectionChanged += handler;
             _categoryProductsHandlers[cvm] = handler;
@@ -684,6 +727,7 @@ namespace ShoppingList.ViewModels
             }
 
             QueueRefreshShopView();
+            RebuildAvailableStores();
         }
 
         private void DetachCategoryHandlers(CategoryViewModel cvm)
@@ -710,17 +754,28 @@ namespace ShoppingList.ViewModels
             if (pvm == null) return;
             pvm.OnBoughtChanged -= Product_OnBoughtChanged;
             pvm.OnBoughtChanged += Product_OnBoughtChanged;
+            // kiedy produkt się zmieni (np. zmieniono Store), odbuduj listę sklepów i zapisz
+            pvm.OnChanged -= Product_OnChanged;
+            pvm.OnChanged += Product_OnChanged;
         }
 
         private void DetachProductHandler(ProductViewModel pvm)
         {
             if (pvm == null) return;
             pvm.OnBoughtChanged -= Product_OnBoughtChanged;
+            pvm.OnChanged -= Product_OnChanged;
         }
 
         private void Product_OnBoughtChanged(object? sender, EventArgs e)
         {
             QueueRefreshShopView();
+        }
+
+        private void Product_OnChanged(object? sender, EventArgs e)
+        {
+            RebuildAvailableStores();
+            QueueRefreshShopView();
+            _ = SaveAsync();
         }
 
         private void QueueRefreshShopView()
@@ -762,6 +817,15 @@ namespace ShoppingList.ViewModels
                 .Select(x => (x.Category, x.Product))
                 .ToList();
 
+            string storeFilter = ShopFilterText?.Trim() ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(storeFilter))
+            {
+                flatProducts = flatProducts
+                    .Where(e => !string.IsNullOrWhiteSpace(e.Product.Store)
+                                && string.Equals(e.Product.Store.Trim(), storeFilter, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
+
             switch (SelectedShopSortOption?.Option ?? ShopSortOption.Category)
             {
                 case ShopSortOption.Name:
@@ -784,8 +848,9 @@ namespace ShoppingList.ViewModels
                 default:
                     foreach (CategoryViewModel cat in orderedCategories)
                     {
-                        List<ProductViewModel> products = cat.Products
-                            .Where(p => !p.IsBought)
+                        List<ProductViewModel> products = flatProducts
+                            .Where(e => e.Category == cat)
+                            .Select(e => e.Product)
                             .OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase)
                             .ToList();
                         if (!products.Any()) continue;
@@ -803,64 +868,6 @@ namespace ShoppingList.ViewModels
             }
         }
 
-        private CategoryViewModel? GetOrCreateCategoryForRecipe(string title)
-        {
-            string baseName = string.IsNullOrWhiteSpace(title) ? "Przepis" : title.Trim();
-
-            CategoryViewModel? existingExact = Categories.FirstOrDefault(c => string.Equals(c.Name, baseName, StringComparison.OrdinalIgnoreCase));
-            if (existingExact == null)
-            {
-                Category category = new Category
-                {
-                    Name = baseName,
-                    Order = Categories.Count
-                };
-                CategoryViewModel vm = new CategoryViewModel(category, SaveAsync);
-                AttachCategoryHandlers(vm);
-                Categories.Add(vm);
-                return vm;
-            }
-
-            List<string?> sameBase = Categories
-                .Select(c => c.Name)
-                .Where(n => n != null && (string.Equals(n, baseName, StringComparison.OrdinalIgnoreCase) || n.StartsWith(baseName + " - ", StringComparison.OrdinalIgnoreCase)))
-                .ToList();
-
-            int maxSuffix = 0;
-            foreach (string? name in sameBase)
-            {
-                if (string.Equals(name, baseName, StringComparison.OrdinalIgnoreCase))
-                {
-                    if (maxSuffix < 0)
-                    {
-                        maxSuffix = 0;
-                    }
-                    continue;
-                }
-
-                string parts = name.Substring(baseName.Length).TrimStart();
-                if (parts.StartsWith("- ", StringComparison.Ordinal))
-                {
-                    string numberPart = parts.Substring(2);
-                    if (int.TryParse(numberPart, out int n))
-                    {
-                        if (n > maxSuffix) maxSuffix = n;
-                    }
-                }
-            }
-
-            string newName = maxSuffix == 0 ? $"{baseName} - 1" : $"{baseName} - {maxSuffix + 1}";
-
-            Category newCategory = new Category
-            {
-                Name = newName,
-                Order = Categories.Count
-            };
-            CategoryViewModel newVm = new CategoryViewModel(newCategory, SaveAsync);
-            AttachCategoryHandlers(newVm);
-            Categories.Add(newVm);
-            return newVm;
-        }
 
         private void ApplyShopFilter()
         {

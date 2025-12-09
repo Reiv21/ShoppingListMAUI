@@ -14,6 +14,10 @@
   <Grid Padding="10" RowDefinitions="Auto,*" ColumnDefinitions="*">
     <StackLayout Orientation="Horizontal" Spacing="8" Grid.Row="0">
       <Button Text="Odśwież" Command="{Binding RefreshShopViewCommand}" />
+      <Picker Title="Sklep"
+              ItemsSource="{Binding AvailableStores}"
+              SelectedItem="{Binding SelectedStore}"
+              HorizontalOptions="Start" />
       <Picker Title="Sortuj"
               ItemsSource="{Binding ShopSortOptions}"
               ItemDisplayBinding="{Binding Label}"

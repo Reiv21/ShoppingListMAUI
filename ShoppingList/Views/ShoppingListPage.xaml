@@ -20,7 +20,7 @@
 
       <StackLayout Orientation="Vertical" Spacing="8" Grid.Row="0">
         <StackLayout Orientation="Horizontal" Spacing="8">
-          <Entry Text="{Binding ShopFilterText}" Placeholder="Filtruj po sklepie" HorizontalOptions="FillAndExpand"/>
+          <Picker Title="Sklep" ItemsSource="{Binding AvailableStores}" SelectedItem="{Binding SelectedStore}" HorizontalOptions="FillAndExpand" />
           <Button Text="Wyczyść" Command="{Binding ClearShopFilterCommand}" />
         </StackLayout>
         <StackLayout Orientation="Horizontal" Spacing="8">
