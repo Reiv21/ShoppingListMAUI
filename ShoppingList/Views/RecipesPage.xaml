@@ -69,7 +69,6 @@
                   <Entry Placeholder="Jednostka" Text="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.NewIngredientUnit}" />
                   <Entry Placeholder="Sklep" Text="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.NewIngredientStore}" />
                   <Entry Placeholder="Kategoria" Text="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.NewIngredientCategoryName}" />
-                  <Picker Title="Wybierz kategorię" ItemsSource="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.Categories}" ItemDisplayBinding="{Binding Name}" SelectedItem="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.NewIngredientSelectedCategory}" />
                   <StackLayout Orientation="Horizontal" Spacing="8">
                     <Label Text="Opcjonalny" VerticalOptions="Center" />
                     <Switch IsToggled="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.NewIngredientIsOptional}" />

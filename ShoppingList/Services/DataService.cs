@@ -101,29 +101,6 @@ namespace ShoppingList.Services
         private AppData CreateDefaultData()
         {
             AppData data = new AppData();
-
-            // predefiniowane kategorie
-            Category dairy = new Category { Name = "Nabiał", Order = 0 };
-            Category veg = new Category { Name = "Warzywa", Order = 1 };
-            Category electronics = new Category { Name = "Elektronika", Order = 2 };
-            data.Categories.AddRange(new[] { dairy, veg, electronics });
-
-            // przykladowe produkty
-            data.Products.Add(new Product { Name = "Mleko", Unit = "l", Quantity = 1, CategoryId = dairy.Id });
-            data.Products.Add(new Product { Name = "Jablka", Unit = "kg", Quantity = 1.5, CategoryId = veg.Id });
-
-            // dwa predefiniowane przepisy
-            Recipe r1 = new Recipe { Title = "Sałatka owocowa", Description = "Prosty przepis" };
-            r1.Ingredients.Add(new Product { Name = "Jabłka", Unit = "szt.", Quantity = 3 });
-            r1.Ingredients.Add(new Product { Name = "Banany", Unit = "szt.", Quantity = 2 });
-
-            Recipe r2 = new Recipe { Title = "Omlet", Description = "Szybki omlet" };
-            r2.Ingredients.Add(new Product { Name = "Jajka", Unit = "szt.", Quantity = 3 });
-            r2.Ingredients.Add(new Product { Name = "Mleko", Unit = "l", Quantity = 0.1 });
-
-            data.Recipes.Add(r1);
-            data.Recipes.Add(r2);
-
             return data;
         }
 

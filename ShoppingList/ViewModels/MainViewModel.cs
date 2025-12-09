@@ -173,14 +173,6 @@ namespace ShoppingList.ViewModels
         private string _newRecipeInstructions = string.Empty;
         public string NewRecipeInstructions { get => _newRecipeInstructions; set => SetProperty(ref _newRecipeInstructions, value); }
 
-        // Picker dla kategorii przy dodawaniu składnika do przepisu
-        private CategoryViewModel? _newIngredientSelectedCategory;
-        public CategoryViewModel? NewIngredientSelectedCategory
-        {
-            get => _newIngredientSelectedCategory;
-            set => SetProperty(ref _newIngredientSelectedCategory, value);
-        }
-
         // Lista dostępnych sklepów do filtrowania
         public ObservableCollection<string> AvailableStores { get; } = new ObservableCollection<string>();
 
@@ -306,7 +298,19 @@ namespace ShoppingList.ViewModels
 
         private void OnAddCategory(string name)
         {
-            Category category = new Category { Name = string.IsNullOrWhiteSpace(name) ? "Nowa kategoria" : name, Order = Categories.Count };
+            string trimmed = name?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(trimmed))
+            {
+                trimmed = "Nowa kategoria";
+            }
+
+            // nie dodawaj drugiej kategorii o tej samej nazwie (case-insensitive)
+            if (Categories.Any(c => string.Equals(c.Name?.Trim(), trimmed, StringComparison.OrdinalIgnoreCase)))
+            {
+                return;
+            }
+
+            Category category = new Category { Name = trimmed, Order = Categories.Count };
             CategoryViewModel categoryVm = new CategoryViewModel(category, SaveAsync);
             AttachCategoryHandlers(categoryVm);
             Categories.Add(categoryVm);
@@ -436,15 +440,9 @@ namespace ShoppingList.ViewModels
             string unit = string.IsNullOrWhiteSpace(NewIngredientUnit) ? "szt." : NewIngredientUnit.Trim();
             double quantity = NewIngredientQuantity <= 0 ? 1 : NewIngredientQuantity;
 
-            // priorytet: wybrana kategoria z Picker, potem pole z nazwą, inaczej puste (Inne zostanie użyte przy dodawaniu)
             Guid categoryId = Guid.Empty;
-            if (NewIngredientSelectedCategory != null)
+            if (!string.IsNullOrWhiteSpace(NewIngredientCategoryName))
             {
-                categoryId = NewIngredientSelectedCategory.Id;
-            }
-            else if (!string.IsNullOrWhiteSpace(NewIngredientCategoryName))
-            {
-                // spróbuj znaleźć istniejącą kategorię o tej nazwie
                 CategoryViewModel? existingCat = Categories.FirstOrDefault(c => string.Equals(c.Name, NewIngredientCategoryName.Trim(), StringComparison.OrdinalIgnoreCase));
                 if (existingCat != null)
                 {
@@ -470,7 +468,6 @@ namespace ShoppingList.ViewModels
             NewIngredientStore = string.Empty;
             NewIngredientIsOptional = false;
             NewIngredientCategoryName = string.Empty;
-            NewIngredientSelectedCategory = null;
 
             OnPropertyChanged(nameof(Recipes));
 
@@ -535,7 +532,6 @@ namespace ShoppingList.ViewModels
 
         private CategoryViewModel GetOrCreateCategoryForIngredient(Product ingredient)
         {
-            // Jeśli produkt ma już CategoryId, użyj tej kategorii (jeśli istnieje)
             if (ingredient.CategoryId != Guid.Empty)
             {
                 CategoryViewModel? existingById = Categories.FirstOrDefault(c => c.Id == ingredient.CategoryId);
@@ -545,7 +541,14 @@ namespace ShoppingList.ViewModels
                 }
             }
 
-            // Brak przypisanej kategorii — spróbuj znaleźć kategorię "Inne" lub utwórz ją
+            if (!string.IsNullOrWhiteSpace(ingredient.Name))
+            {
+                string lower = ingredient.Name.Trim().ToLowerInvariant();
+
+                CategoryViewModel? byName = Categories.FirstOrDefault(c => string.Equals(c.Name, lower, StringComparison.OrdinalIgnoreCase));
+                if (byName != null) return byName;
+            }
+
             CategoryViewModel? other = Categories.FirstOrDefault(c => string.Equals(c.Name, "Inne", StringComparison.OrdinalIgnoreCase));
             if (other != null) return other;
 
